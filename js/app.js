@@ -1,0 +1,525 @@
+// js/app.js
+import { storage } from './storage.js';
+import { buildUserPrompt } from './prompt.js';
+import { generateStory, generateAudio, APIError } from './api.js';
+import { StoryPlayer } from './player.js';
+
+// --- Estado Global ---
+const state = {
+    age: null,
+    characters: [],
+    themes: [],
+    length: 10,
+    value: '',
+    audioUrl: null,
+    audioEnabled: true,
+    audioSource: 'none', // 'none', 'elevenlabs', 'openai', 'browser'
+    ttsProvider: 'elevenlabs',
+    browserVoice: null,
+    openaiVoice: 'shimmer',
+    player: null,
+    generatedStoryText: '',
+    currentView: 'onboarding'
+};
+
+// --- Selectores ---
+const views = document.querySelectorAll('.view');
+const btnSettings = document.getElementById('btn-settings');
+const inputChar = document.getElementById('input-character');
+const btnAddChar = document.getElementById('btn-add-char');
+const charChipsContainer = document.getElementById('char-chips');
+const charCount = document.getElementById('char-count');
+const btnCreate = document.getElementById('btn-create');
+const inputValue = document.getElementById('input-value');
+const valueCount = document.getElementById('value-count');
+
+// --- Utilidades de UI ---
+function showView(viewId) {
+    views.forEach(v => v.classList.add('hidden'));
+    const target = document.getElementById(`view-${viewId}`);
+    if (target) {
+        target.classList.remove('hidden');
+        state.currentView = viewId;
+    }
+}
+
+function updateCharChips() {
+    charChipsContainer.innerHTML = '';
+    state.characters.forEach((char, index) => {
+        const chip = document.createElement('div');
+        chip.className = 'bg-white/10 px-3 py-1 rounded-lg text-sm flex items-center gap-2 border border-white/10';
+        chip.innerHTML = `
+      <span>${char}</span>
+      <button class="hover:text-red-400" onclick="removeCharacter(${index})">×</button>
+    `;
+        charChipsContainer.appendChild(chip);
+    });
+    charCount.textContent = `${state.characters.length}/3 personajes`;
+    validateWorkshop();
+}
+
+window.removeCharacter = (index) => {
+    state.characters.splice(index, 1);
+    updateCharChips();
+};
+
+function validateWorkshop() {
+    const isValid = state.age && state.themes.length > 0;
+    btnCreate.disabled = !isValid;
+}
+
+function updateCostEstimation() {
+    // Estimate tokens and audio chars based on duration in minutes
+    const tokensPerMin = 130; // Slightly lower for more precise targets
+    const charsPerMin = 450;
+    const tokenCost = state.length * tokensPerMin;
+    const charCost = state.length * charsPerMin;
+
+    const GPT4O_MIN_PER_TOKEN = 0.00000015;
+    const ELEVEN_PER_CHAR = 0.000030;
+
+    const textCost = tokenCost * GPT4O_MIN_PER_TOKEN;
+    const isElevenLabs = storage.get('EL_KEY');
+
+    const audioCost = (state.audioEnabled && isElevenLabs) ? charCost * ELEVEN_PER_CHAR : 0;
+
+    document.getElementById('cost-text').textContent = `~$${textCost.toFixed(4)}`;
+    document.getElementById('cost-audio-row').classList.toggle('hidden', !state.audioEnabled);
+
+    const audioLabel = document.getElementById('cost-audio-row').querySelector('span');
+    if (isElevenLabs) {
+        audioLabel.textContent = "Audio ElevenLabs ✨:";
+        document.getElementById('cost-audio').textContent = `~$${audioCost.toFixed(4)}`;
+    } else {
+        audioLabel.textContent = "Audio Navegador (Gratis) 🆓:";
+        document.getElementById('cost-audio').textContent = `$0.0000`;
+    }
+
+    document.getElementById('cost-total').textContent = `~$${(textCost + audioCost).toFixed(4)}`;
+}
+
+// --- PDF Generation ---
+function downloadPDF() {
+    const element = document.getElementById('view-story');
+    const title = document.getElementById('story-title').textContent;
+
+    // Configuración para un PDF bonito
+    const opt = {
+        margin: [15, 15],
+        filename: `Cuento_${title.replace(/\s+/g, '_')}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: {
+            scale: 2,
+            useCORS: true,
+            backgroundColor: '#0f172a' // Corresponde al fondo dark de la app
+        },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Estilos temporales para el PDF para asegurar legibilidad
+    const storyBody = document.getElementById('story-body');
+    const originalStyle = storyBody.style.color;
+    storyBody.style.color = '#ffffff';
+
+    // Generar PDF
+    html2pdf().set(opt).from(element).save().then(() => {
+        storyBody.style.color = originalStyle;
+    });
+}
+
+// --- Animación de Fondo: Estrellas ---
+function initStarfield() {
+    const starfield = document.getElementById('starfield');
+    for (let i = 0; i < 50; i++) {
+        const star = document.createElement('div');
+        star.className = 'star animate-twinkle';
+        const size = Math.random() * 3 + 1;
+        star.style.width = `${size}px`;
+        star.style.height = `${size}px`;
+        star.style.top = `${Math.random() * 100}%`;
+        star.style.left = `${Math.random() * 100}%`;
+        star.style.animationDelay = `${Math.random() * 3}s`;
+        starfield.appendChild(star);
+    }
+}
+
+// --- Flow Principal ---
+async function handleGenerate() {
+    showView('generating');
+
+    const phaseText = document.getElementById('generating-phase-text');
+    const phases = [
+        { icon: "✍️", text: "Despertando a los magos escritores...", duration: 2500 },
+        { icon: "📖", text: "Tejiendo palabras con hilo de luna...", duration: 3000 },
+        { icon: "🎨", text: "Pintando las últimas estrellas...", duration: 2500 }
+    ];
+
+    if (storage.isAudioMode()) {
+        phases.push({ icon: "🎙️", text: "Grabando la voz mágica...", duration: 3000 });
+    }
+
+    let phaseIndex = 0;
+    const phaseInterval = setInterval(() => {
+        phaseIndex++;
+        if (phaseIndex < phases.length) {
+            phaseText.textContent = phases[phaseIndex].text;
+        }
+    }, 2700);
+
+    try {
+        const userPrompt = buildUserPrompt({
+            age: state.age,
+            characters: state.characters,
+            themes: state.themes,
+            duration: state.length,
+            value: state.value
+        });
+
+        const storyText = await generateStory(userPrompt, storage.get('OPENAI_KEY'));
+        state.generatedStoryText = storyText;
+
+        const elKey = storage.get('EL_KEY');
+        const oaKey = storage.get('OPENAI_KEY');
+
+        if (state.audioEnabled) {
+            if (state.ttsProvider === 'elevenlabs' && elKey) {
+                state.audioUrl = await generateAudio(storyText, elKey, storage.get('EL_VOICE'));
+                state.audioSource = 'elevenlabs';
+            } else if (state.ttsProvider === 'openai' && oaKey) {
+                state.audioUrl = await generateOpenAIAudio(storyText, oaKey, state.openaiVoice);
+                state.audioSource = 'openai';
+            } else {
+                state.audioSource = 'browser';
+            }
+        } else {
+            state.audioSource = 'none';
+        }
+
+        clearInterval(phaseInterval);
+        renderStory(storyText);
+        showView('story');
+    } catch (error) {
+        clearInterval(phaseInterval);
+        handleError(error);
+    }
+}
+
+function renderStory(text) {
+    const titleMatch = text.match(/\*\*(.*?)\*\*/);
+    const title = titleMatch ? titleMatch[1] : "Cuento Mágico";
+    document.getElementById('story-title').textContent = title;
+
+    const charPart = state.characters.length > 0 ? `Para ${state.characters[0]} · ` : '';
+    document.getElementById('story-meta').textContent = `${charPart}${state.themes.join(', ')}`;
+
+    const content = text.replace(/\*\*(.*?)\*\*/, '').trim();
+    const sections = content.split(/\[(INTRODUCCIÓN|NUDO|DESENLACE)\]/g);
+
+    const body = document.getElementById('story-body');
+    body.innerHTML = '';
+
+    for (let i = 1; i < sections.length; i += 2) {
+        const sectionName = sections[i];
+        const sectionText = sections[i + 1]?.trim() || '';
+
+        const div = document.createElement('div');
+        div.className = 'story-section';
+        div.innerHTML = `
+      <p>${sectionText.replace(/\n/g, '<br>')}</p>
+      ${i < sections.length - 2 ? '<div class="text-center py-6 text-yellow-500/30">✦ ✦ ✦</div>' : ''}
+    `;
+        body.appendChild(div);
+    }
+
+    // Audio Player
+    const audioContainer = document.getElementById('audio-container');
+    if (state.audioSource !== 'none') {
+        audioContainer.classList.remove('hidden');
+        if (state.audioSource === 'elevenlabs' || state.audioSource === 'openai') {
+            initPlayer(state.audioUrl);
+        } else {
+            initBrowserPlayer(text);
+        }
+    } else {
+        audioContainer.classList.add('hidden');
+    }
+}
+
+function initBrowserPlayer(text) {
+    if (state.player) state.player.stop();
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+
+    const playIcon = document.getElementById('player-icon-play');
+    const pauseIcon = document.getElementById('player-icon-pause');
+    const progressBar = document.getElementById('player-progress-bar');
+    const timeCurrent = document.getElementById('player-time-current');
+    const timeTotal = document.getElementById('player-time-total');
+
+    // Hide some progress UI for browser TTS since it's hard to track precisely
+    progressBar.style.width = '0%';
+    timeCurrent.textContent = "Navegador";
+    timeTotal.textContent = "Gratis";
+
+    const utterance = new SpeechSynthesisUtterance(text.replace(/\[.*?\]/g, ''));
+
+    // Use selected voice if available
+    if (state.browserVoice && 'speechSynthesis' in window) {
+        const voices = window.speechSynthesis.getVoices();
+        const selectedVoice = voices.find(v => v.name === state.browserVoice);
+        if (selectedVoice) utterance.voice = selectedVoice;
+    }
+
+    utterance.lang = 'es-ES';
+    utterance.rate = 0.9; // Slightly slower for better bedtime reading
+
+    utterance.onend = () => {
+        playIcon.classList.remove('hidden');
+        pauseIcon.classList.add('hidden');
+    };
+
+    document.getElementById('player-toggle').onclick = () => {
+        if (window.speechSynthesis.speaking) {
+            if (window.speechSynthesis.paused) {
+                window.speechSynthesis.resume();
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+            } else {
+                window.speechSynthesis.pause();
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+            }
+        } else {
+            window.speechSynthesis.speak(utterance);
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+        }
+    };
+
+    document.getElementById('player-progress-container').onclick = null; // Scale not supported for native TTS
+}
+
+function initPlayer(url) {
+    if (state.player) state.player.stop();
+
+    const playIcon = document.getElementById('player-icon-play');
+    const pauseIcon = document.getElementById('player-icon-pause');
+    const progressBar = document.getElementById('player-progress-bar');
+    const timeCurrent = document.getElementById('player-time-current');
+    const timeTotal = document.getElementById('player-time-total');
+
+    state.player = new StoryPlayer(url,
+        (data) => {
+            progressBar.style.width = `${data.percent}%`;
+            timeCurrent.textContent = formatTime(data.currentTime);
+            timeTotal.textContent = formatTime(data.duration);
+        },
+        () => {
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+        }
+    );
+
+    document.getElementById('player-toggle').onclick = () => {
+        state.player.toggle();
+        const isPaused = state.player.audio.paused;
+        playIcon.classList.toggle('hidden', !isPaused);
+        pauseIcon.classList.toggle('hidden', isPaused);
+    };
+
+    document.getElementById('player-progress-container').onclick = (e) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        const percent = ((e.clientX - rect.left) / rect.width) * 100;
+        state.player.seek(percent);
+    };
+
+    document.getElementById('player-volume').oninput = (e) => {
+        state.player.setVolume(e.target.value / 100);
+    };
+}
+
+function formatTime(seconds) {
+    if (isNaN(seconds)) return "0:00";
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function handleError(error) {
+    console.error(error);
+    const code = error.code || 'ERR_UNKNOWN';
+    const errorMap = {
+        'ERR_OPENAI_KEY': { title: "API Key inválida", desc: "Tu clave de OpenAI no funciona. Puede que no tenga créditos o sea incorrecta.", cta: "Verificar clave", action: () => showView('onboarding') },
+        'ERR_OPENAI_RATE': { title: "Demasiadas solicitudes", desc: "Los magos están muy ocupados ahora. Espera un momento e inténtalo de nuevo.", cta: "Reintentar en 30s", action: () => handleGenerate() },
+        'ERR_OPENAI_NETWORK': { title: "Sin conexión", desc: "Parece que la magia necesita internet. Comprueba tu conexión.", cta: "Reintentar", action: () => handleGenerate() },
+        'ERR_ELEVENLABS_KEY': { title: "Voz no disponible", desc: "La API Key de ElevenLabs es incorrecta.", cta: "Continuar sin audio", action: () => { storage.set('AUDIO_MODE', false); renderStory(state.generatedStoryText); showView('story'); } },
+        'ERR_ELEVENLABS_QUOTA': { title: "Sin créditos de audio", desc: "Te has quedado sin minutos de audio este mes.", cta: "Ver cuento en texto", action: () => { storage.set('AUDIO_MODE', false); renderStory(state.generatedStoryText); showView('story'); } },
+        'ERR_CONTENT_FILTER': { title: "Personajes no válidos", desc: "Los personajes elegidos no pudieron crear una historia segura.", cta: "Volver al taller", action: () => showView('workshop') }
+    };
+
+    const config = errorMap[code] || { title: "Error Inesperado", desc: "Algo salió mal en el taller de sueños.", cta: "Volver al taller", action: () => showView('workshop') };
+
+    document.getElementById('error-title').textContent = config.title;
+    document.getElementById('error-desc').textContent = config.desc;
+    const ctaBtn = document.getElementById('error-cta-btn');
+    ctaBtn.textContent = config.cta;
+    ctaBtn.onclick = config.action;
+
+    showView('error');
+}
+
+function initBrowserVoiceSelector() {
+    const container = document.getElementById('browser-voice-selection');
+    const select = document.getElementById('select-browser-voice');
+
+    if (!('speechSynthesis' in window)) return;
+
+    container.classList.remove('hidden');
+
+    function populateVoices() {
+        const voices = window.speechSynthesis.getVoices();
+        const spanishVoices = voices.filter(v => v.lang.startsWith('es'));
+
+        select.innerHTML = spanishVoices.length > 0
+            ? spanishVoices.map(v => `<option value="${v.name}" ${v.name === state.browserVoice ? 'selected' : ''}>${v.name}</option>`).join('')
+            : '<option value="">No se encontraron voces en español</option>';
+
+        if (!state.browserVoice && spanishVoices.length > 0) {
+            state.browserVoice = spanishVoices[0].name;
+        }
+    }
+
+    populateVoices();
+    if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = populateVoices;
+    }
+
+    select.onchange = (e) => {
+        state.browserVoice = e.target.value;
+        storage.set('BROWSER_VOICE', state.browserVoice);
+    };
+}
+
+// --- Event Listeners ---
+document.addEventListener('DOMContentLoaded', () => {
+    initStarfield();
+
+    // Cargar datos guardados
+    document.getElementById('input-openai-key').value = storage.get('OPENAI_KEY') || '';
+    document.getElementById('input-el-key').value = storage.get('EL_KEY') || '';
+    document.getElementById('input-el-voice').value = storage.get('EL_VOICE') || '';
+    state.browserVoice = storage.get('BROWSER_VOICE');
+    state.ttsProvider = storage.get('TTS_PROVIDER') || 'elevenlabs';
+    state.openaiVoice = storage.get('OPENAI_VOICE') || 'shimmer';
+
+    initBrowserVoiceSelector();
+    updateTTSUI();
+
+    // Siempre empezamos en onboarding para mostrar el mensaje de bienvenida y configuración
+    showView('onboarding');
+
+    // Si ya está completo, el botón "Comenzar a crear" simplemente saltará al taller
+    // (Ya pre-llenamos los campos arriba)
+
+    // Onboarding
+    document.getElementById('btn-start').onclick = () => {
+        const oKey = document.getElementById('input-openai-key').value;
+        const eKey = document.getElementById('input-el-key').value;
+        const vId = document.getElementById('input-el-voice').value;
+
+        if (!oKey) return alert('La API Key de OpenAI es obligatoria');
+
+        storage.set('OPENAI_KEY', oKey);
+        storage.set('EL_KEY', eKey);
+        storage.set('EL_VOICE', vId);
+        storage.set('TTS_PROVIDER', state.ttsProvider);
+        storage.set('OPENAI_VOICE', state.openaiVoice);
+        storage.set('BROWSER_VOICE', document.getElementById('select-browser-voice').value);
+        storage.set('AUDIO_MODE', !!eKey || !!storage.get('BROWSER_VOICE') || true);
+        storage.set('ONBOARDING', true);
+
+        showView('workshop');
+        updateCostEstimation();
+    };
+
+    btnSettings.onclick = () => showView('onboarding');
+
+    // Workshop - Edad
+    document.querySelectorAll('.age-card').forEach(card => {
+        card.onclick = () => {
+            document.querySelectorAll('.age-card').forEach(c => c.classList.remove('selected', 'bg-white/10'));
+            card.classList.add('selected', 'bg-white/10');
+            state.age = card.dataset.age;
+            validateWorkshop();
+        };
+    });
+
+    // Workshop - Personajes
+    btnAddChar.onclick = () => {
+        const char = inputChar.value.trim();
+        if (char && state.characters.length < 3) {
+            state.characters.push(char);
+            inputChar.value = '';
+            updateCharChips();
+        }
+    };
+
+    // Workshop - Temática
+    document.querySelectorAll('.theme-card').forEach(card => {
+        card.onclick = () => {
+            const theme = card.dataset.theme;
+            if (state.themes.includes(theme)) {
+                state.themes = state.themes.filter(t => t !== theme);
+                card.classList.remove('selected', 'bg-white/10');
+            } else if (state.themes.length < 2) {
+                state.themes.push(theme);
+                card.classList.add('selected', 'bg-white/10');
+            }
+            validateWorkshop();
+        };
+    });
+
+    // Workshop - Duración
+    document.querySelectorAll('.len-card').forEach(card => {
+        card.onclick = () => {
+            document.querySelectorAll('.len-card').forEach(c => c.classList.remove('bg-white/10', 'text-white', 'font-medium', 'shadow-lg'));
+            card.classList.add('bg-white/10', 'text-white', 'font-medium', 'shadow-lg');
+            state.length = parseInt(card.dataset.len, 10);
+            updateCostEstimation();
+        };
+    });
+
+    // Workshop - Valor
+    inputValue.oninput = (e) => {
+        state.value = e.target.value;
+        valueCount.textContent = `${state.value.length}/60`;
+    };
+
+    document.getElementById('toggle-audio').onchange = (e) => {
+        state.audioEnabled = e.target.checked;
+        updateCostEstimation();
+    };
+
+    btnCreate.onclick = handleGenerate;
+
+    // Story - Download PDF
+    document.getElementById('btn-download-pdf').onclick = downloadPDF;
+});
+
+function updateTTSUI() {
+    const isOpenAI = state.ttsProvider === 'openai';
+    document.getElementById('openai-voice-config').classList.toggle('hidden', !isOpenAI);
+    document.getElementById('elevenlabs-voice-config').classList.toggle('hidden', isOpenAI);
+
+    document.getElementById('provider-openai').classList.toggle('bg-white/10', isOpenAI);
+    document.getElementById('provider-openai').classList.toggle('text-white', isOpenAI);
+    document.getElementById('provider-openai').classList.toggle('text-secondary', !isOpenAI);
+
+    document.getElementById('provider-elevenlabs').classList.toggle('bg-white/10', !isOpenAI);
+    document.getElementById('provider-elevenlabs').classList.toggle('text-white', !isOpenAI);
+    document.getElementById('provider-elevenlabs').classList.toggle('text-secondary', isOpenAI);
+}
+
+window.setTTSProvider = (provider) => {
+    state.ttsProvider = provider;
+    updateTTSUI();
+};

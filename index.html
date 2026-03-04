@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StoryDreams ✨ | Cuentos Mágicos</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;500;600&display=swap"
+        rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/custom.css">
+    <!-- PDF Generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+</head>
+
+<body class="bg-dreamy selection:bg-violet-500/30">
+
+    <!-- Header Fijo -->
+    <header
+        class="fixed top-0 left-0 w-full z-50 px-6 py-4 flex justify-between items-center backdrop-blur-md bg-transparent border-b border-white/5">
+        <div class="flex items-center gap-2 cursor-pointer" onclick="location.reload()">
+            <span class="text-2xl">🌙</span>
+            <h1 class="text-xl font-bold font-playfair tracking-tight text-white">StoryDreams</h1>
+        </div>
+        <button id="btn-settings"
+            class="p-2 rounded-full hover:bg-white/10 transition-colors text-white/70 hover:text-white">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path
+                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                <circle cx="12" cy="12" r="3" />
+            </svg>
+        </button>
+    </header>
+
+    <main class="pt-24 pb-12 px-6 max-w-[720px] mx-auto min-h-screen relative overflow-hidden">
+
+        <!-- Vista 1: ONBOARDING -->
+        <section id="view-onboarding" class="view hidden animate-fade-up">
+            <div class="text-center mb-10">
+                <h2 class="text-4xl md:text-5xl font-bold mb-4 gradient-text text-white">Cuentos mágicos para soñar
+                    juntos</h2>
+                <p class="text-secondary opacity-80">Configura tu taller para comenzar la magia.</p>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Viñeta A: Lectura -->
+                <div class="selection-card p-6 rounded-2xl flex items-start gap-4">
+                    <div class="bg-violet-500/20 p-3 rounded-lg text-violet-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z" />
+                            <path d="M8 7h6" />
+                            <path d="M8 11h8" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg mb-1">📖 Modo Lectura</h3>
+                        <p class="text-sm text-secondary">Genera el texto del cuento. Requiere OpenAI API Key.</p>
+                    </div>
+                </div>
+
+                <!-- Viñeta B: Audio Premium -->
+                <div class="selection-card p-6 rounded-2xl flex items-start gap-4">
+                    <div class="bg-yellow-500/20 p-3 rounded-lg text-yellow-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                            <line x1="12" y1="19" x2="12" y2="22" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg mb-1">✨ Audio Premium (ElevenLabs)</h3>
+                        <p class="text-sm text-secondary">Voz humana ultra-realista. Requiere tu propia API Key.</p>
+                    </div>
+                </div>
+
+                <!-- Viñeta C: Audio Gratis -->
+                <div class="selection-card p-6 rounded-2xl flex items-start gap-4">
+                    <div class="bg-blue-500/20 p-3 rounded-lg text-blue-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-lg mb-1">🆓 Audio Gratis (Navegador)</h3>
+                        <p class="text-sm text-secondary">Voz sintética estándar. Gratis y sin configurar nada.</p>
+                    </div>
+                </div>
+
+                <!-- Formulario de Configuración -->
+                <div class="space-y-4 pt-4">
+                    <div>
+                        <label class="block text-sm font-medium mb-2 opacity-70">OpenAI API Key *</label>
+                        <input type="password" id="input-openai-key" class="input-magical w-full p-3 rounded-xl"
+                            placeholder="sk-...">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium mb-2 opacity-70">ElevenLabs API Key (opcional)</label>
+                        <input type="password" id="input-el-key" class="input-magical w-full p-3 rounded-xl"
+                            placeholder="Clave para activar audio">
+                    </div>
+                </div>
+                <div class="space-y-4 bg-white/5 p-4 rounded-xl border border-white/10">
+                    <label class="block text-sm font-medium opacity-70">Opciones de Audio Premium</label>
+
+                    <div class="flex gap-2 p-1 bg-black/20 rounded-lg mb-4">
+                        <button id="provider-elevenlabs"
+                            class="flex-1 py-2 text-xs rounded-md transition-all bg-white/10 text-white font-medium"
+                            onclick="setTTSProvider('elevenlabs')">ElevenLabs</button>
+                        <button id="provider-openai"
+                            class="flex-1 py-2 text-xs rounded-md transition-all text-secondary"
+                            onclick="setTTSProvider('openai')">OpenAI (Económico)</button>
+                    </div>
+
+                    <div id="openai-voice-config" class="hidden animate-fade-in">
+                        <label class="block text-xs font-medium mb-1 opacity-50">Voz de OpenAI</label>
+                        <select id="select-openai-voice"
+                            class="input-magical w-full p-2.5 rounded-lg bg-dreamy-card text-sm">
+                            <option value="alloy">Alloy (Neutro)</option>
+                            <option value="echo">Echo (Masculino)</option>
+                            <option value="fable">Fable (Narrador)</option>
+                            <option value="onyx">Onyx (Profundo)</option>
+                            <option value="nova">Nova (Energético)</option>
+                            <option value="shimmer" selected>Shimmer (Dulce)</option>
+                        </select>
+                    </div>
+
+                    <div id="elevenlabs-voice-config" class="animate-fade-in">
+                        <label class="block text-xs font-medium mb-1 opacity-50">Voice ID ElevenLabs</label>
+                        <input type="text" id="input-el-voice" class="input-magical w-full p-2.5 rounded-lg text-sm"
+                            placeholder="21m00Tcm4TlvDq8ikWAM">
+                    </div>
+                </div>
+                <div id="browser-voice-selection" class="hidden">
+                    <label class="block text-sm font-medium mb-2 opacity-70">Voz del Navegador (para modo
+                        gratis)</label>
+                    <select id="select-browser-voice" class="input-magical w-full p-3 rounded-xl bg-dreamy-card">
+                        <option value="">Cargando voces...</option>
+                    </select>
+                    <p class="text-[10px] text-secondary mt-2">Truco: Las voces llamadas 'Jorge' o 'Monica' suelen
+                        sonar muy bien en Mac.</p>
+                </div>
+            </div>
+
+            <div class="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl flex gap-3">
+                <span class="text-xl">🔒</span>
+                <p class="text-xs text-secondary leading-relaxed">
+                    Tus claves se guardan solo en tu dispositivo (localStorage). StoryDreams nunca las envía a sus
+                    servidores ni las comparte con terceros.
+                </p>
+            </div>
+
+            <button id="btn-start"
+                class="btn-primary w-full py-4 rounded-full mt-4 flex items-center justify-center gap-2 animate-magic-pulse">
+                <span>Comenzar a crear</span>
+                <span>✨</span>
+            </button>
+            </div>
+        </section>
+
+        <!-- Vista 2: WORKSHOP -->
+        <section id="view-workshop" class="view hidden animate-fade-up">
+            <h2 class="text-3xl font-bold font-playfair mb-8 text-white text-center">El Taller de Cuentos 🌟</h2>
+
+            <div class="space-y-10">
+                <!-- Sección 1: Edad -->
+                <section>
+                    <label class="block text-lg font-medium mb-4">👶 ¿Para quién es el cuento?</label>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <button
+                            class="age-card selection-card p-4 rounded-xl text-center hover:bg-white/5 transition-all"
+                            data-age="2-3">
+                            <div class="text-2xl mb-1">👶</div>
+                            <div class="text-sm font-medium">2-3 años</div>
+                        </button>
+                        <button
+                            class="age-card selection-card p-4 rounded-xl text-center hover:bg-white/5 transition-all"
+                            data-age="4-5">
+                            <div class="text-2xl mb-1">🧒</div>
+                            <div class="text-sm font-medium">4-5 años</div>
+                        </button>
+                        <button
+                            class="age-card selection-card p-4 rounded-xl text-center hover:bg-white/5 transition-all"
+                            data-age="6-8">
+                            <div class="text-2xl mb-1">🧑</div>
+                            <div class="text-sm font-medium">6-8 años</div>
+                        </button>
+                        <button
+                            class="age-card selection-card p-4 rounded-xl text-center hover:bg-white/5 transition-all"
+                            data-age="9-12">
+                            <div class="text-2xl mb-1">🧑‍🎓</div>
+                            <div class="text-sm font-medium">9-12 años</div>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Sección 2: Personajes -->
+                <section>
+                    <label class="block text-lg font-medium mb-2">👤 Personajes principales <span
+                            class="text-sm opacity-50">(opcional)</span></label>
+                    <div class="flex gap-2 mb-3">
+                        <input type="text" id="input-character" class="input-magical flex-1 p-3 rounded-xl"
+                            placeholder="Ej: Luna la conejita...">
+                        <button id="btn-add-char"
+                            class="bg-white/10 p-3 rounded-xl hover:bg-white/20 transition-all">+</button>
+                    </div>
+                    <div id="char-chips" class="flex flex-wrap gap-2">
+                        <!-- Chips go here -->
+                    </div>
+                    <div class="text-xs text-secondary mt-2 text-right" id="char-count">0/3 personajes</div>
+                </section>
+
+                <!-- Sección 3: Temática -->
+                <section>
+                    <label class="block text-lg font-medium mb-4">🧚 Selecciona los mundos (máx 2)</label>
+                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="fairy">
+                            <div class="text-2xl mb-1">🧚</div>
+                            <div class="text-xs">Hadas y Magia</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="space">
+                            <div class="text-2xl mb-1">🚀</div>
+                            <div class="text-xs">Aventura Espacial</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="animals">
+                            <div class="text-2xl mb-1">🐻</div>
+                            <div class="text-xs">Animales</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="ocean">
+                            <div class="text-2xl mb-1">🌊</div>
+                            <div class="text-xs">Mundo Submarino</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="dinos">
+                            <div class="text-2xl mb-1">🦕</div>
+                            <div class="text-xs">Dinosaurios</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="kingdom">
+                            <div class="text-2xl mb-1">🏰</div>
+                            <div class="text-xs">Reinos Mágicos</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="pirates">
+                            <div class="text-2xl mb-1">🏴‍☠️</div>
+                            <div class="text-xs">Piratas</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="superheroes">
+                            <div class="text-2xl mb-1">🦸</div>
+                            <div class="text-xs">Superhéroes</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="robots">
+                            <div class="text-2xl mb-1">🤖</div>
+                            <div class="text-xs">Robots</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="magic_school">
+                            <div class="text-2xl mb-1">🪄</div>
+                            <div class="text-xs">Escuela de Magia</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="jungle">
+                            <div class="text-2xl mb-1">🌿</div>
+                            <div class="text-xs">Selva Tropical</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="toys">
+                            <div class="text-2xl mb-1">🧸</div>
+                            <div class="text-xs">Mundo Juguete</div>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Sección 4: Duración -->
+                <section>
+                    <label class="block text-lg font-medium mb-4">🌙 ¿Cuánto tiempo durará el cuento?</label>
+                    <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 bg-white/5 p-1 rounded-2xl">
+                        <button class="len-card p-2 rounded-xl text-center hover:bg-white/5 transition-all text-xs"
+                            data-len="2">2-5 min</button>
+                        <button class="len-card p-2 rounded-xl text-center hover:bg-white/5 transition-all text-xs"
+                            data-len="5">5-10 min</button>
+                        <button
+                            class="len-card p-2 rounded-xl text-center bg-white/10 shadow-lg text-white font-medium text-xs"
+                            data-len="10">10-15 min</button>
+                        <button class="len-card p-2 rounded-xl text-center hover:bg-white/5 transition-all text-xs"
+                            data-len="20">20-25 min</button>
+                        <button class="len-card p-2 rounded-xl text-center hover:bg-white/5 transition-all text-xs"
+                            data-len="30">30 min</button>
+                    </div>
+                </section>
+
+                <!-- Sección 5: Valor -->
+                <section>
+                    <label class="block text-lg font-medium mb-2">💡 ¿Qué quieres que aprenda? <span
+                            class="text-sm opacity-50">(opcional)</span></label>
+                    <input type="text" id="input-value" class="input-magical w-full p-3 rounded-xl"
+                        placeholder="Ej: compartir, ser valiente..." maxlength="60">
+                    <div class="text-xs text-secondary mt-1 text-right" id="value-count">0/60</div>
+                </section>
+
+                <!-- Sección 6: Audio Toggle -->
+                <section class="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/10">
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">🔊</span>
+                        <div>
+                            <h4 class="font-medium text-white text-sm">¿Quieres que te lo lean?</h4>
+                            <p class="text-xs text-secondary">Habilita esta opción para generar audio.</p>
+                        </div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-audio" class="sr-only peer" checked>
+                        <div
+                            class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600">
+                        </div>
+                    </label>
+                </section>
+
+                <div class="bg-white/5 border border-white/10 p-5 rounded-2xl">
+                    <h4 class="text-sm font-semibold opacity-70 mb-3 uppercase tracking-wider">💰 Coste estimado:</h4>
+                    <div class="flex justify-between text-sm mb-1">
+                        <span class="text-secondary">Generación de texto:</span>
+                        <span id="cost-text">~$0.0002</span>
+                    </div>
+                    <div id="cost-audio-row" class="flex justify-between text-sm mb-3">
+                        <span class="text-secondary">Audio ElevenLabs ✨:</span>
+                        <span id="cost-audio">~$0.0840</span>
+                    </div>
+                    <div class="h-px bg-white/10 mb-3"></div>
+                    <div class="flex justify-between font-bold text-lg">
+                        <span>Total estimado:</span>
+                        <span id="cost-total" class="text-yellow-400">~$0.0842</span>
+                    </div>
+                </div>
+
+                <button id="btn-create"
+                    class="btn-primary w-full py-5 rounded-full text-lg shadow-2xl disabled:opacity-30 disabled:cursor-not-allowed">
+                    ✨ Crear el cuento
+                </button>
+            </div>
+        </section>
+
+        <!-- Vista 3: GENERATING -->
+        <section id="view-generating" class="view hidden flex flex-col items-center justify-center text-center py-20">
+            <!-- Orbes animados en el fondo -->
+            <div
+                class="absolute top-1/2 left-1/4 -translate-y-1/2 w-80 h-80 bg-violet-600/30 blur-[120px] rounded-full animate-float">
+            </div>
+            <div class="absolute bottom-1/4 right-1/4 w-64 h-64 bg-yellow-500/20 blur-[100px] rounded-full animate-float"
+                style="animation-delay: -3s"></div>
+
+            <div class="text-6xl mb-12 animate-spin-slow">✨</div>
+
+            <h2 id="generating-phase-text" class="text-2xl font-playfair font-bold text-white mb-8 animate-fade-up">
+                Despertando a los magos escritores...</h2>
+
+            <div class="w-full max-w-[300px] h-2 bg-white/5 rounded-full overflow-hidden mb-4 relative">
+                <div id="generating-progress"
+                    class="absolute top-0 left-0 h-full w-full bg-gradient-to-r from-violet-500 via-purple-500 to-yellow-500"
+                    style="background-size: 200% 100%; animation: shimmer 2s infinite linear;"></div>
+            </div>
+            <p class="text-secondary text-sm italic">Cerrando los ojitos mientras la magia sucede...</p>
+        </section>
+
+        <!-- Vista 4: STORY_VIEW -->
+        <section id="view-story" class="view hidden animate-fade-up">
+            <div id="story-header" class="mb-8">
+                <h2 id="story-title"
+                    class="text-3xl md:text-4xl font-bold font-playfair text-yellow-400 mb-2 leading-tight">Título del
+                    Cuento</h2>
+                <p id="story-meta" class="text-secondary italic">Para Luna · Aventura Espacial</p>
+            </div>
+
+            <div id="audio-container" class="hidden mb-10 sticky top-20 z-30 transition-all">
+                <div class="bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-2xl shadow-2xl">
+                    <div class="flex items-center gap-4 mb-3">
+                        <button id="player-toggle"
+                            class="bg-white text-dark w-12 h-12 rounded-full flex items-center justify-center hover:scale-105 transition-all text-black">
+                            <span id="player-icon-play" class="text-xl">▶</span>
+                            <span id="player-icon-pause" class="text-xl hidden">⏸</span>
+                        </button>
+                        <div class="flex-1">
+                            <div id="player-progress-container"
+                                class="w-full h-2 bg-white/20 rounded-full cursor-pointer relative group">
+                                <div id="player-progress-bar"
+                                    class="absolute top-0 left-0 h-full bg-yellow-400 rounded-full w-0"></div>
+                            </div>
+                            <div class="flex justify-between text-[10px] mt-1 text-secondary">
+                                <span id="player-time-current">0:00</span>
+                                <span id="player-time-total">0:00</span>
+                            </div>
+                        </div>
+                        <div class="hidden md:flex items-center gap-2 px-2">
+                            <span class="text-xs">🔊</span>
+                            <input type="range" id="player-volume"
+                                class="w-20 accent-white h-1 bg-white/20 rounded-lg appearance-none cursor-pointer">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="story-body" class="font-playfair text-lg leading-[1.9] text-white/90 space-y-8 pb-12">
+                <!-- Story text blocks go here -->
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-4 border-t border-white/10 pt-8 mt-8">
+                <button id="btn-download-pdf"
+                    class="bg-violet-600 hover:bg-violet-500 py-4 px-8 rounded-full flex-1 transition-all flex items-center justify-center gap-2 shadow-xl shadow-violet-900/20">
+                    <span>✨</span>
+                    <span>Descargar PDF Mágico</span>
+                </button>
+                <button onclick="location.reload()"
+                    class="btn-primary py-4 px-8 rounded-full flex-1 flex items-center justify-center gap-2">
+                    <span>🔄</span>
+                    <span>Crear otro</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Vista 5: ERROR -->
+        <section id="view-error"
+            class="view hidden flex flex-col items-center justify-center text-center py-20 animate-fade-up">
+            <div class="text-8xl mb-8">😔</div>
+            <h2 id="error-title" class="text-3xl font-bold font-playfair text-white mb-4">¡Ups! Algo salió mal</h2>
+            <p id="error-desc" class="text-secondary mb-10 max-w-[400px]">Los magos de la IA se han quedado sin polvo de
+                estrellas temporalmente.</p>
+
+            <div class="flex flex-col gap-4 w-full max-w-[280px]">
+                <button id="error-cta-btn" class="btn-primary py-4 rounded-full w-full">Reintentar</button>
+                <button id="error-secondary-btn" class="text-secondary hover:text-white transition-all text-sm">Volver
+                    al taller</button>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Fondo de estrellas generadas por script -->
+    <div id="starfield" class="fixed inset-0 pointer-events-none z-[-1]"></div>
+
+    <!-- Scripts -->
+    <script type="module" src="js/app.js"></script>
+</body>
+
+</html>

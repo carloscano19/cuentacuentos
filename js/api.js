@@ -1,0 +1,145 @@
+// js/api.js
+import { SYSTEM_PROMPT } from './prompt.js';
+
+export class APIError extends Error {
+    constructor(code, message) {
+        super(message);
+        this.code = code;
+    }
+}
+
+export async function generateStory(prompt, apiKey, provider = 'openai', model = '') {
+    try {
+        if (provider === 'openai') {
+            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: model || 'gpt-4o-mini',
+                    max_tokens: 1600,
+                    temperature: 0.85,
+                    presence_penalty: 0.3,
+                    frequency_penalty: 0.3,
+                    messages: [
+                        { role: 'system', content: SYSTEM_PROMPT },
+                        { role: 'user', content: prompt }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) throw new APIError('ERR_OPENAI_KEY', 'Invalid API Key');
+                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', 'Rate limit exceeded');
+                throw new APIError('ERR_OPENAI_NETWORK', 'Network error');
+            }
+
+            const data = await response.json();
+            if (data.choices[0].finish_reason === 'content_filter') {
+                throw new APIError('ERR_CONTENT_FILTER', 'Content rejected by filter');
+            }
+            return data.choices[0].message.content;
+
+        } else if (provider === 'anthropic') {
+            const response = await fetch('https://api.anthropic.com/v1/messages', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': apiKey,
+                    'anthropic-version': '2023-06-01',
+                    'dangerously-allow-browser': 'true'
+                },
+                body: JSON.stringify({
+                    model: model || 'claude-3-haiku-20240307',
+                    max_tokens: 2000,
+                    system: SYSTEM_PROMPT,
+                    messages: [
+                        { role: 'user', content: prompt }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) throw new APIError('ERR_OPENAI_KEY', 'Invalid Anthropic Key');
+                throw new APIError('ERR_OPENAI_NETWORK', 'Anthropic Network error');
+            }
+
+            const data = await response.json();
+            return data.content[0].text;
+        }
+    } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError('ERR_OPENAI_NETWORK', error.message);
+    }
+}
+
+export async function generateAudio(text, apiKey, voiceId) {
+    const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel — voz cálida femenina
+
+    try {
+        const response = await fetch(
+            `https://api.elevenlabs.io/v1/text-to-speech/${voiceId || DEFAULT_VOICE_ID}`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'xi-api-key': apiKey
+                },
+                body: JSON.stringify({
+                    text: text,
+                    model_id: 'eleven_multilingual_v2',
+                    voice_settings: {
+                        stability: 0.75,
+                        similarity_boost: 0.85,
+                        style: 0.20,
+                        use_speaker_boost: true
+                    }
+                })
+            }
+        );
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            if (response.status === 401) throw new APIError('ERR_ELEVENLABS_KEY', 'Invalid ElevenLabs Key');
+            if (response.status === 429 || (errorData.detail && errorData.detail.status === 'quota_exceeded')) {
+                throw new APIError('ERR_ELEVENLABS_QUOTA', 'Quota exceeded');
+            }
+            throw new APIError('ERR_ELEVENLABS_VOICE', 'Voice error');
+        }
+
+        const audioBlob = await response.blob();
+        return URL.createObjectURL(audioBlob);
+    } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError('ERR_ELEVENLABS_NETWORK', error.message);
+    }
+}
+export async function generateOpenAIAudio(text, apiKey, voice = 'shimmer') {
+    try {
+        const response = await fetch('https://api.openai.com/v1/audio/speech', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                model: 'tts-1',
+                input: text.replace(/\[.*?\]/g, '').substring(0, 4000), // OpenAI limit is 4096 chars
+                voice: voice
+            })
+        });
+
+        if (!response.ok) {
+            if (response.status === 401) throw new APIError('ERR_OPENAI_KEY', 'Invalid OpenAI Key');
+            throw new APIError('ERR_OPENAI_NETWORK', 'OpenAI TTS error');
+        }
+
+        const audioBlob = await response.blob();
+        return URL.createObjectURL(audioBlob);
+    } catch (error) {
+        if (error instanceof APIError) throw error;
+        throw new APIError('ERR_OPENAI_NETWORK', error.message);
+    }
+}

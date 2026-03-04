@@ -167,6 +167,16 @@ async function handleGenerate() {
     }, 2700);
 
     try {
+        // Capturar automáticamente cualquier texto que el usuario haya dejado en los inputs sin pulsar "+"
+        const hangingChar = inputChar.value.trim();
+        if (hangingChar && state.characters.length < 3 && !state.characters.includes(hangingChar)) {
+            state.characters.push(hangingChar);
+            updateCharChips();
+        }
+
+        // Asegurar que el valor (moraleja) esté sincronizado con el input
+        state.value = inputValue.value.trim();
+
         const userPrompt = buildUserPrompt({
             age: state.age,
             characters: state.characters,

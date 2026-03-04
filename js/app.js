@@ -376,14 +376,15 @@ function handleError(error) {
     const code = error.code || 'ERR_UNKNOWN';
     const errorMap = {
         'ERR_OPENAI_KEY': { title: "API Key inválida", desc: "Tu clave de OpenAI no funciona. Puede que no tenga créditos o sea incorrecta.", cta: "Verificar clave", action: () => showView('onboarding') },
-        'ERR_OPENAI_RATE': { title: "Demasiadas solicitudes", desc: "Los magos están muy ocupados ahora. Espera un momento e inténtalo de nuevo.", cta: "Reintentar en 30s", action: () => handleGenerate() },
-        'ERR_OPENAI_NETWORK': { title: "Sin conexión", desc: "Parece que la magia necesita internet. Comprueba tu conexión.", cta: "Reintentar", action: () => handleGenerate() },
+        'ERR_OPENAI_RATE': { title: "Demasiadas solicitudes o Sin Saldo", desc: "Los magos están muy ocupados ahora o tu cuenta de OpenAI no tiene créditos. Revisa tu saldo.", cta: "Reintentar en 30s", action: () => handleGenerate() },
+        'ERR_OPENAI_REQUEST': { title: "Error en la petición", desc: "OpenAI rechazó la solicitud. Mensaje: " + (error.message || ""), cta: "Volver", action: () => showView('workshop') },
+        'ERR_OPENAI_NETWORK': { title: "Error de red", desc: "Parece que la magia necesita internet o hubo un fallo de conexión.", cta: "Reintentar", action: () => handleGenerate() },
         'ERR_ELEVENLABS_KEY': { title: "Voz no disponible", desc: "La API Key de ElevenLabs es incorrecta.", cta: "Continuar sin audio", action: () => { storage.set('AUDIO_MODE', false); renderStory(state.generatedStoryText); showView('story'); } },
         'ERR_ELEVENLABS_QUOTA': { title: "Sin créditos de audio", desc: "Te has quedado sin minutos de audio este mes.", cta: "Ver cuento en texto", action: () => { storage.set('AUDIO_MODE', false); renderStory(state.generatedStoryText); showView('story'); } },
         'ERR_CONTENT_FILTER': { title: "Personajes no válidos", desc: "Los personajes elegidos no pudieron crear una historia segura.", cta: "Volver al taller", action: () => showView('workshop') }
     };
 
-    const config = errorMap[code] || { title: "Error Inesperado", desc: "Algo salió mal en el taller de sueños.", cta: "Volver al taller", action: () => showView('workshop') };
+    const config = errorMap[code] || { title: "Error Inesperado", desc: `Algo salió mal en el taller de sueños. Código: ${code}. Detalle: ${error.message || 'Desconocido'}.`, cta: "Volver al taller", action: () => showView('workshop') };
 
     document.getElementById('error-title').textContent = config.title;
     document.getElementById('error-desc').textContent = config.desc;

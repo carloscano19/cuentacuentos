@@ -31,6 +31,9 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
             });
 
             if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error("OpenAI Error:", response.status, errorData);
+                if (response.status === 400) throw new APIError('ERR_OPENAI_REQUEST', errorData.error?.message || 'Bad Request');
                 if (response.status === 401) throw new APIError('ERR_OPENAI_KEY', 'Invalid API Key');
                 if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', 'Rate limit exceeded');
                 throw new APIError('ERR_OPENAI_NETWORK', 'Network error');

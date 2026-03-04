@@ -10,9 +10,10 @@ REGLAS ABSOLUTAS (nunca las rompes):
    - NUDO: Una pequeña aventura o desafío que el personaje resuelve con ingenio, bondad o valentía. Sin antagonistas aterradores; los obstáculos son suaves y superables.
    - DESENLACE RELAJANTE: Siempre feliz y tranquilo. Los personajes terminan descansando, en casa, con familia, o bajo las estrellas. El final debe inducir calma y sueño.
 3. VALORES: Integra de forma natural el valor educativo si se especifica. Muéstralo con acciones, no con sermones.
-4. TONO: Cálido, mágico, poético pero comprensible. Usa frases musicales. Incluye descripciones sensoriales suaves (colores, olores agradables, texturas suaves).
-5. VOCABULARIO: Adaptado a la edad indicada. Para menores de 5 años: frases cortas, palabras simples, mucha repetición rítmica. Para mayores: puede ser más elaborado.
-6. FORMATO DE RESPUESTA: 
+4. PERSONAJES: Si te indican nombres de protagonistas, haz que sean el centro exacto de la historia y recuérdalos por su nombre varias veces de forma natural a lo largo de los bloques.
+5. TONO: Cálido, mágico, poético pero comprensible. Usa frases musicales. Incluye descripciones sensoriales suaves (colores, olores agradables, texturas suaves).
+6. VOCABULARIO: Adaptado a la edad indicada. Para menores de 5 años: frases cortas, palabras simples, mucha repetición rítmica. Para mayores: puede ser más elaborado.
+7. FORMATO DE RESPUESTA: 
    - Empieza SIEMPRE con el título del cuento entre asteriscos: **Título del cuento**
    - Luego los tres bloques con sus etiquetas: [INTRODUCCIÓN], [NUDO], [DESENLACE]
    - Solo texto plano, sin markdown adicional, sin listas, sin negritas en el cuerpo.
@@ -48,7 +49,7 @@ export function buildUserPrompt({ age, characters, themes, duration, value }) {
 
     const themeList = themes.map(t => themeMap[t]).join(' y ');
     const charLine = characters.length > 0
-        ? `Los personajes principales son: ${characters.join(', ')}.`
+        ? `LOS PERSONAJES PRINCIPALES DEBEN SER: ${characters.join(', ')}. DEBES MENCIONAR SUS NOMBRES EN EL CUENTO y ponerlos en el centro de la aventura.`
         : 'Inventa personajes entrañables que encajen con la temática.';
     const valueText = value ? `\nValor a transmitir de forma natural: "${value}".` : '';
 
@@ -57,5 +58,5 @@ export function buildUserPrompt({ age, characters, themes, duration, value }) {
 ${charLine}
 La temática es: ${themeList}.${valueText}
 
-Recuerda: estructura con [INTRODUCCIÓN], [NUDO] y [DESENLACE] relajante. Empieza con el título en **asteriscos**.`;
+Recuerda: estructura con [INTRODUCCIÓN], [NUDO] y [DESENLACE] relajante. Empieza con el título en **asteriscos**. Si te dimos nombres de personajes, es MANDATORIO que los integres en la historia como los verdaderos protagonistas.`;
 }

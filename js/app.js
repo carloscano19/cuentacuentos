@@ -260,38 +260,65 @@ function initBrowserPlayer(text) {
     timeCurrent.textContent = "Navegador";
     timeTotal.textContent = "Gratis";
 
-    const utterance = new SpeechSynthesisUtterance(text.replace(/\[.*?\]/g, ''));
+    const cleanText = text.replace(/\[.*?\]/g, '').trim();
+    // Dividir en bloques pequeños (oraciones) para evitar bugs de corte prematuro
+    const sentences = cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText];
+    let currentChunk = 0;
 
-    // Use selected voice if available
-    if (state.browserVoice && 'speechSynthesis' in window) {
-        const voices = window.speechSynthesis.getVoices();
-        const selectedVoice = voices.find(v => v.name === state.browserVoice);
-        if (selectedVoice) utterance.voice = selectedVoice;
+    function speakNextChunk() {
+        if (currentChunk >= sentences.length) {
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+            currentChunk = 0; // Se puede repetir el audio
+            return;
+        }
+
+        const utterance = new SpeechSynthesisUtterance(sentences[currentChunk]);
+
+        if (state.browserVoice && 'speechSynthesis' in window) {
+            const voices = window.speechSynthesis.getVoices();
+            const selectedVoice = voices.find(v => v.name === state.browserVoice);
+            if (selectedVoice) utterance.voice = selectedVoice;
+        }
+
+        utterance.lang = 'es-ES';
+        utterance.rate = 0.9;
+
+        utterance.onend = () => {
+            // Solo seguimos si el icono de play está oculto (es decir, el audio está fluyendo)
+            if (playIcon.classList.contains('hidden')) {
+                currentChunk++;
+                speakNextChunk();
+
+                // Track visual de progreso "falso" aproximado
+                const approxPercent = (currentChunk / sentences.length) * 100;
+                progressBar.style.width = `${approxPercent}%`;
+            }
+        };
+
+        utterance.onerror = (e) => {
+            console.error("Browser TTS Err:", e);
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+        };
+
+        window.speechSynthesis.speak(utterance);
     }
 
-    utterance.lang = 'es-ES';
-    utterance.rate = 0.9; // Slightly slower for better bedtime reading
-
-    utterance.onend = () => {
-        playIcon.classList.remove('hidden');
-        pauseIcon.classList.add('hidden');
-    };
-
     document.getElementById('player-toggle').onclick = () => {
-        if (window.speechSynthesis.speaking) {
-            if (window.speechSynthesis.paused) {
-                window.speechSynthesis.resume();
-                playIcon.classList.add('hidden');
-                pauseIcon.classList.remove('hidden');
-            } else {
-                window.speechSynthesis.pause();
-                playIcon.classList.remove('hidden');
-                pauseIcon.classList.add('hidden');
-            }
-        } else {
-            window.speechSynthesis.speak(utterance);
+        if (window.speechSynthesis.speaking && !window.speechSynthesis.paused) {
+            window.speechSynthesis.pause();
+            playIcon.classList.remove('hidden');
+            pauseIcon.classList.add('hidden');
+        } else if (window.speechSynthesis.paused) {
+            window.speechSynthesis.resume();
             playIcon.classList.add('hidden');
             pauseIcon.classList.remove('hidden');
+        } else {
+            // Reproducir desde el principio o desde el último punto
+            playIcon.classList.add('hidden');
+            pauseIcon.classList.remove('hidden');
+            speakNextChunk();
         }
     };
 

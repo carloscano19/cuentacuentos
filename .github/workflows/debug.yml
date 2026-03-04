@@ -17,13 +17,8 @@ jobs:
           password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
           script: |
-            echo "--- Current Directory ---"
-            pwd
-            echo "--- Root Directory Listing ---"
-            ls -la
-            echo "--- public_html Listing ---"
-            ls -la public_html || echo "public_html not found"
-            echo "--- domains/carloscanofernandez.com/public_html Listing ---"
-            ls -la domains/carloscanofernandez.com/public_html || echo "domains path not found"
-            echo "--- find public_html ---"
-            find . -maxdepth 3 -name "public_html" -type d
+            echo "--- Searching for 'cuentacuentos' folder ---"
+            find $HOME -name "cuentacuentos" -type d 2>/dev/null
+            echo "--- Web Root Check ---"
+            [ -d "domains/carloscanofernandez.com/public_html" ] && echo "Found domains path" || echo "Domains path NOT found"
+            [ -d "public_html" ] && echo "Found public_html in home" || echo "public_html NOT found in home"

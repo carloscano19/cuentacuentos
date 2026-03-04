@@ -185,11 +185,12 @@ async function handleGenerate() {
             value: state.value
         });
 
-        const storyText = await generateStory(userPrompt, storage.get('OPENAI_KEY'));
+        const storyText = await generateStory(userPrompt, storage.get('OPENAI_KEY') || state.tempKeys?.oKey);
         state.generatedStoryText = storyText;
 
-        const elKey = storage.get('EL_KEY');
-        const oaKey = storage.get('OPENAI_KEY');
+        const elKey = storage.get('EL_KEY') || state.tempKeys?.eKey;
+        const oaKey = storage.get('OPENAI_KEY') || state.tempKeys?.oKey;
+        const elVoice = storage.get('EL_VOICE') || state.tempKeys?.vId;
 
         if (state.audioEnabled) {
             if (state.ttsProvider === 'elevenlabs' && elKey) {
@@ -445,6 +446,9 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('input-openai-key').value = storage.get('OPENAI_KEY') || '';
     document.getElementById('input-el-key').value = storage.get('EL_KEY') || '';
     document.getElementById('input-el-voice').value = storage.get('EL_VOICE') || '';
+    const shouldRemember = storage.get('REMEMBER_KEYS') === 'true';
+    document.getElementById('check-remember').checked = shouldRemember;
+
     state.browserVoice = storage.get('BROWSER_VOICE');
     state.ttsProvider = storage.get('TTS_PROVIDER') || 'elevenlabs';
     state.openaiVoice = storage.get('OPENAI_VOICE') || 'shimmer';
@@ -460,15 +464,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Onboarding
     document.getElementById('btn-start').onclick = () => {
-        const oKey = document.getElementById('input-openai-key').value;
-        const eKey = document.getElementById('input-el-key').value;
-        const vId = document.getElementById('input-el-voice').value;
+        const oKey = document.getElementById('input-openai-key').value.trim();
+        const eKey = document.getElementById('input-el-key').value.trim();
+        const vId = document.getElementById('input-el-voice').value.trim();
+        const remember = document.getElementById('check-remember').checked;
 
         if (!oKey) return alert('La API Key de OpenAI es obligatoria');
 
-        storage.set('OPENAI_KEY', oKey);
-        storage.set('EL_KEY', eKey);
-        storage.set('EL_VOICE', vId);
+        // Guardar preferencia de "recordar"
+        storage.set('REMEMBER_KEYS', remember);
+
+        if (remember) {
+            storage.set('OPENAI_KEY', oKey);
+            storage.set('EL_KEY', eKey);
+            storage.set('EL_VOICE', vId);
+        } else {
+            // Si no quiere recordar, guardamos en el estado de la sesión actual 
+            // pero borramos del localStorage físico para la próxima vez
+            storage.remove('OPENAI_KEY');
+            storage.remove('EL_KEY');
+            storage.remove('EL_VOICE');
+
+            // Inyectamos manualmente en el estado para esta sesión
+            state.tempKeys = { oKey, eKey, vId };
+        }
+
         storage.set('TTS_PROVIDER', state.ttsProvider);
         storage.set('OPENAI_VOICE', state.openaiVoice);
         storage.set('BROWSER_VOICE', document.getElementById('select-browser-voice').value);

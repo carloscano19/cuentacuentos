@@ -9,7 +9,8 @@ const KEYS = {
   BROWSER_VOICE: 'sd_browser_voice',
   AUDIO_MODE: 'sd_audio_mode',
   ONBOARDING: 'sd_onboarding_complete',
-  LAST_STORY: 'sd_last_story'
+  LAST_STORY: 'sd_last_story',
+  REMEMBER_KEYS: 'sd_remember_keys'
 };
 
 const storage = {

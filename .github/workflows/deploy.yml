@@ -12,14 +12,23 @@ jobs:
       - name: 🚚 Checkout Code
         uses: actions/checkout@v3
 
-      - name: 🚀 Deploy to Hostinger
-        uses: easingthemes/ssh-deploy@main
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
-          ARGS: "-rlgoDzvc -i"
-          SOURCE: "/"
-          REMOTE_HOST: ${{ secrets.HOSTINGER_SSH_HOST }}
-          REMOTE_USER: ${{ secrets.HOSTINGER_SSH_USER }}
-          REMOTE_PORT: ${{ secrets.HOSTINGER_SSH_PORT }}
-          TARGET: "public_html/cuentacuentos"
-          EXCLUDE: "/.git/, /.github/, /.gitignore"
+      - name: 📁 Crear directorio si no existe
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            mkdir -p public_html/cuentacuentos
+
+      - name: 🚀 Desplegar a Hostinger
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          source: "./*,!./.git/*,!./.github/*,!./.gitignore"
+          target: "public_html/cuentacuentos"
+          strip_components: 0

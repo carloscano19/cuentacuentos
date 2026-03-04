@@ -20,7 +20,7 @@ jobs:
           password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
           script: |
-            mkdir -p public_html/cuentacuentos
+            mkdir -p domains/carloscanofernandez.com/public_html/cuentacuentos
 
       - name: 🚀 Desplegar a Hostinger
         uses: appleboy/scp-action@master
@@ -30,5 +30,5 @@ jobs:
           password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
           source: "./*,!./.git/*,!./.github/*,!./.gitignore"
-          target: "public_html/cuentacuentos"
+          target: "domains/carloscanofernandez.com/public_html/cuentacuentos"
           strip_components: 0

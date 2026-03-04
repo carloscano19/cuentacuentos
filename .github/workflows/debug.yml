@@ -1,0 +1,27 @@
+name: Diagnostic Remote
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔍 Check SSH Environment
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.HOSTINGER_SSH_HOST }}
+          username: ${{ secrets.HOSTINGER_SSH_USER }}
+          password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
+          port: ${{ secrets.HOSTINGER_SSH_PORT }}
+          script: |
+            echo "--- Current Directory ---"
+            pwd
+            echo "--- Root Directory Listing ---"
+            ls -la
+            echo "--- public_html Listing ---"
+            ls -la public_html || echo "public_html not found"
+            echo "--- domains/carloscanofernandez.com/public_html Listing ---"
+            ls -la domains/carloscanofernandez.com/public_html || echo "domains path not found"
+            echo "--- find public_html ---"
+            find . -maxdepth 3 -name "public_html" -type d

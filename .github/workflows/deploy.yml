@@ -21,6 +21,8 @@ jobs:
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
           script: |
             mkdir -p domains/carloscanofernandez.com/public_html/cuentacuentos
+            rm -f domains/carloscanofernandez.com/public_html/debug.html
+            rm -f public_html/debug.html
 
       - name: 🚀 Desplegar a Hostinger
         uses: appleboy/scp-action@master

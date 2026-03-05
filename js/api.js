@@ -47,8 +47,8 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
 
         } else if (provider === 'gemini') {
             const trimmedKey = apiKey.trim();
-            // Usamos v1beta para system_instruction, pero si falla con 400 clave inválida, damos un mensaje más útil
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${trimmedKey}`, {
+            // Usamos v1beta para system_instruction. Si falla, probamos el modelo Lite que suele ser más permisivo con la cuota gratuita.
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${trimmedKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -72,13 +72,17 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
                 console.error("Gemini Error:", response.status, errorData);
                 const errorMsg = errorData?.error?.message || response.statusText;
 
-                // Error 400 con "API key not valid" suele ser por la clave en sí
+                // Si el error es 404, puede que el modelo lite no esté en todas las regiones, volvemos al flash normal
+                if (response.status === 404) {
+                    return generateStory(prompt, apiKey, 'gemini-fallback', model);
+                }
+
                 if (response.status === 400 && errorMsg.toLowerCase().includes('key not valid')) {
                     throw new APIError('ERR_OPENAI_KEY', 'La clave de Gemini no parece válida. Asegúrate de copiar el código completo (empieza por AIza) y que sea de Google AI Studio.');
                 }
 
                 if (response.status === 401 || response.status === 403) throw new APIError('ERR_OPENAI_KEY', `Clave inválida o bloqueada: ${errorMsg}`);
-                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', `Límite de cuota: ${errorMsg}`);
+                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', `Límite de cuota superado: ${errorMsg}. Google limita el uso gratuito. Intenta crear otra clave o esperar unos minutos.`);
                 throw new APIError('ERR_OPENAI_REQUEST', `Error de Gemini (${response.status}): ${errorMsg}`);
             }
 
@@ -86,6 +90,22 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
             if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
                 throw new APIError('ERR_CONTENT_FILTER', 'Gemini bloqueó el contenido por seguridad o no generó respuesta.');
             }
+            return data.candidates[0].content.parts[0].text;
+
+        } else if (provider === 'gemini-fallback') {
+            // Un intento final con el formato más básico y el modelo estándar
+            const trimmedKey = apiKey.trim();
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${trimmedKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: `${SYSTEM_PROMPT}\n\nUSER PROMPT: ${prompt}` }]
+                    }]
+                })
+            });
+            if (!response.ok) throw new APIError('ERR_OPENAI_REQUEST', 'Gemini Fallback failed');
+            const data = await response.json();
             return data.candidates[0].content.parts[0].text;
 
         } else if (provider === 'anthropic') {

@@ -52,14 +52,15 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
+                    system_instruction: {
+                        parts: [{ text: SYSTEM_PROMPT }]
+                    },
                     contents: [{
-                        parts: [{
-                            text: `SYSTEM INSTRUCTIONS: ${SYSTEM_PROMPT}\n\nUSER PROMPT: ${prompt}`
-                        }]
+                        parts: [{ text: prompt }]
                     }],
                     generationConfig: {
                         maxOutputTokens: 2048,
-                        temperature: 0.9
+                        temperature: 0.8
                     }
                 })
             });
@@ -67,14 +68,15 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({}));
                 console.error("Gemini Error:", response.status, errorData);
-                if (response.status === 400) throw new APIError('ERR_OPENAI_REQUEST', 'Gemini Bad Request (API Key possibly invalid)');
-                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', 'Gemini Quota Exceeded (Free Tier Limit)');
-                throw new APIError('ERR_OPENAI_NETWORK', 'Gemini Network error');
+                const errorMsg = errorData?.error?.message || response.statusText;
+                if (response.status === 401 || response.status === 403) throw new APIError('ERR_OPENAI_KEY', `Clave inválida: ${errorMsg}`);
+                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', 'Límite de cuota excedido');
+                throw new APIError('ERR_OPENAI_REQUEST', `Error de Gemini: ${errorMsg}`);
             }
 
             const data = await response.json();
-            if (!data.candidates || data.candidates.length === 0) {
-                throw new APIError('ERR_CONTENT_FILTER', 'Gemini content filter triggered');
+            if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
+                throw new APIError('ERR_CONTENT_FILTER', 'Gemini bloqueó el contenido por seguridad o no generó respuesta.');
             }
             return data.candidates[0].content.parts[0].text;
 

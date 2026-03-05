@@ -615,6 +615,11 @@ window.setTextProvider = (provider) => {
     updateTextProviderUI();
 };
 
+window.toggleGeminiHelp = () => {
+    const guide = document.getElementById('gemini-help-guide');
+    guide.classList.toggle('hidden');
+};
+
 window.setTTSProvider = (provider) => {
     state.ttsProvider = provider;
     updateTTSUI();

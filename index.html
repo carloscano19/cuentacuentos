@@ -125,8 +125,25 @@
                         <input type="password" id="input-gemini-key"
                             class="input-magical w-full p-3 rounded-xl border-none focus:ring-1 focus:ring-secondary/50"
                             placeholder="Pega aquí tu clave AIza...">
-                        <p class="text-[10px] mt-2 opacity-40 italic">Pulsa el botón superior, dale a "Create API key" y
-                            pégala aquí.</p>
+
+                        <button onclick="toggleGeminiHelp()"
+                            class="mt-2 text-[10px] text-secondary/70 flex items-center gap-1 hover:text-secondary transition-all">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            ¿Cómo conseguirla? Ver guía rápida
+                        </button>
+
+                        <div id="gemini-help-guide"
+                            class="hidden mt-3 p-3 bg-black/40 rounded-xl border border-white/5 animate-fade-in">
+                            <p class="text-[10px] mb-2 text-white/60">1. Dale al botón <b>"Obtener clave gratis"</b>
+                                arriba.<br>2. En la web de Google, pulsa <b>"Crear clave de API"</b> (arriba a la
+                                derecha).<br>3. Copia el código y pégalo aquí.</p>
+                            <img src="img/gemini_guide.png" class="w-full rounded-lg shadow-2xl border border-white/10"
+                                alt="Guía Gemini">
+                        </div>
                     </div>
                     <div class="flex items-center gap-2 py-2">
                         <input type="checkbox" id="check-remember"

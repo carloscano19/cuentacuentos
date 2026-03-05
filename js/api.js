@@ -48,7 +48,7 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
         } else if (provider === 'gemini') {
             const trimmedKey = apiKey.trim();
             // Usamos v1beta para system_instruction, pero si falla con 400 clave inválida, damos un mensaje más útil
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${trimmedKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${trimmedKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

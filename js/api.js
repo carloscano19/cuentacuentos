@@ -47,8 +47,8 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
 
         } else if (provider === 'gemini') {
             const trimmedKey = apiKey.trim();
-            // Usamos v1beta para system_instruction. Usamos 'gemini-flash-latest' que es el alias más estable de Google.
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${trimmedKey}`, {
+            // gemini-1.5-flash tiene cuota gratuita real en el tier gratuito de Google AI Studio
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${trimmedKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -84,9 +84,11 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
                 if (response.status === 401 || response.status === 403) throw new APIError('ERR_OPENAI_KEY', `Clave inválida o bloqueada: ${errorMsg}`);
 
                 if (response.status === 429) {
-                    let customMsg = `Límite superado: ${errorMsg}`;
+                    let customMsg;
                     if (errorMsg.includes('limit: 0')) {
-                        customMsg = "Tu cuenta de Google no tiene permiso para usar Gemini gratis en esta región o con este modelo. Prueba a crear una clave nueva en Google AI Studio asegurándote de que no hay restricciones.";
+                        customMsg = "Google ha agotado tu cuota gratuita por hoy. Espera unos minutos o crea una clave nueva en aistudio.google.com. El límite gratuito se renueva cada minuto, hora o día según el modelo.";
+                    } else {
+                        customMsg = `Límite de peticiones superado: ${errorMsg}. Espera unos segundos e inténtalo de nuevo.`;
                     }
                     throw new APIError('ERR_OPENAI_RATE', customMsg);
                 }
@@ -100,9 +102,9 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
             return data.candidates[0].content.parts[0].text;
 
         } else if (provider === 'gemini-fallback') {
-            // Un intento final con el formato más básico y el modelo estándar
+            // Un intento final con gemini-1.5-flash-8b, que también tiene cuota gratuita
             const trimmedKey = apiKey.trim();
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${trimmedKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${trimmedKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

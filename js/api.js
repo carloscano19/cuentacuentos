@@ -47,8 +47,8 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
 
         } else if (provider === 'gemini') {
             const trimmedKey = apiKey.trim();
-            // gemini-1.5-flash tiene cuota gratuita real en el tier gratuito de Google AI Studio
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${trimmedKey}`, {
+            // gemini-2.5-flash-lite funciona en el free tier (15 rpm, 250 rpm/día)
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${trimmedKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -72,8 +72,15 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
                 console.error("Gemini Error:", response.status, errorData);
                 const errorMsg = errorData?.error?.message || response.statusText;
 
-                // Si el error es 404, puede que el modelo lite no esté en todas las regiones, volvemos al flash normal
+                // Si el error es 404, el modelo no está disponible para esta cuenta → probar fallback
                 if (response.status === 404) {
+                    console.warn('gemini-2.5-flash-lite no disponible, probando fallback...');
+                    return generateStory(prompt, apiKey, 'gemini-fallback', model);
+                }
+
+                // 429 con gemini-2.5-flash-lite: también probar fallback con gemma
+                if (response.status === 429 && (errorMsg.includes('limit: 0') || errorMsg.includes('RESOURCE_EXHAUSTED'))) {
+                    console.warn('Cuota agotada en gemini-2.5-flash-lite, probando gemma fallback...');
                     return generateStory(prompt, apiKey, 'gemini-fallback', model);
                 }
 
@@ -102,9 +109,9 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
             return data.candidates[0].content.parts[0].text;
 
         } else if (provider === 'gemini-fallback') {
-            // Un intento final con gemini-1.5-flash-8b, que también tiene cuota gratuita
+            // Fallback: gemma-3-4b-it — modelo open source de Google, disponible en free tier
             const trimmedKey = apiKey.trim();
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-8b:generateContent?key=${trimmedKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemma-3-4b-it:generateContent?key=${trimmedKey}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -113,7 +120,12 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
                     }]
                 })
             });
-            if (!response.ok) throw new APIError('ERR_OPENAI_REQUEST', 'Gemini Fallback failed');
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                const errMsg = errData?.error?.message || response.statusText;
+                console.error('Gemini Fallback (gemma-3) error:', response.status, errMsg);
+                throw new APIError('ERR_OPENAI_REQUEST', `Gemini no disponible: ${errMsg}. Verifica que tu clave sea válida en aistudio.google.com`);
+            }
             const data = await response.json();
             return data.candidates[0].content.parts[0].text;
 

@@ -161,9 +161,18 @@ async function handleGenerate() {
             fearLevel: state.fearLevel
         });
 
-        const storyApiKey = state.textProvider === 'gemini'
-            ? (storage.get('GEMINI_KEY') || state.tempKeys?.gKey)
-            : (storage.get('OPENAI_KEY') || state.tempKeys?.oKey);
+        const rawOKey = document.getElementById('input-openai-key').value;
+        const rawGKey = document.getElementById('input-gemini-key').value;
+
+        // Sanitizar claves (quitar espacios y posibles prefijos "Key: " o similar)
+        const sanitizeKey = (k) => k.replace(/^(key|api\s*key|clave):\s*/i, '').trim();
+
+        const oKey = sanitizeKey(rawOKey);
+        const gKey = sanitizeKey(rawGKey);
+
+        const storyApiKey = state.textProvider === 'gemini' ? gKey : oKey;
+
+        console.log(`Intentando generar con ${state.textProvider}. Clave (inicio): ${storyApiKey ? storyApiKey.substring(0, 8) + '...' : 'FALTA'}`);
 
         if (!storyApiKey) throw new APIError('ERR_OPENAI_KEY', `Falta la clave de ${state.textProvider}`);
 
@@ -471,9 +480,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Onboarding
     document.getElementById('btn-start').onclick = () => {
-        const oKey = document.getElementById('input-openai-key').value.trim();
-        const gKey = document.getElementById('input-gemini-key').value.trim();
-        const eKey = document.getElementById('input-el-key').value.trim();
+        const sanitizeKey = (k) => k.replace(/^(key|api\s*key|clave):\s*/i, '').trim();
+        const oKey = sanitizeKey(document.getElementById('input-openai-key').value);
+        const gKey = sanitizeKey(document.getElementById('input-gemini-key').value);
+        const eKey = sanitizeKey(document.getElementById('input-el-key').value);
         const vId = document.getElementById('input-el-voice').value.trim();
         const remember = document.getElementById('check-remember').checked;
 
@@ -488,14 +498,10 @@ document.addEventListener('DOMContentLoaded', () => {
             storage.set('EL_KEY', eKey);
             storage.set('EL_VOICE', vId);
         } else {
-            // Si no quiere recordar, guardamos en el estado de la sesión actual 
-            // pero borramos del localStorage físico para la próxima vez
             storage.remove('OPENAI_KEY');
             storage.remove('GEMINI_KEY');
             storage.remove('EL_KEY');
             storage.remove('EL_VOICE');
-
-            // Inyectamos manualmente en el estado para esta sesión
             state.tempKeys = { oKey, gKey, eKey, vId };
         }
 

@@ -1,6 +1,8 @@
 // js/storage.js
 const KEYS = {
   OPENAI_KEY: 'sd_openai_key',
+  GEMINI_KEY: 'sd_gemini_key',
+  TEXT_PROVIDER: 'sd_text_provider',
   LLM_MODEL: 'sd_llm_model',
   TTS_PROVIDER: 'sd_tts_provider', // 'elevenlabs', 'openai'
   EL_KEY: 'sd_elevenlabs_key',

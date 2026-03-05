@@ -47,8 +47,8 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
 
         } else if (provider === 'gemini') {
             const trimmedKey = apiKey.trim();
-            // Usamos v1beta para system_instruction. Si falla, probamos el modelo Lite que suele ser más permisivo con la cuota gratuita.
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${trimmedKey}`, {
+            // Usamos v1beta para system_instruction. Usamos 'gemini-flash-latest' que es el alias más estable de Google.
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${trimmedKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -82,7 +82,14 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
                 }
 
                 if (response.status === 401 || response.status === 403) throw new APIError('ERR_OPENAI_KEY', `Clave inválida o bloqueada: ${errorMsg}`);
-                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', `Límite de cuota superado: ${errorMsg}. Google limita el uso gratuito. Intenta crear otra clave o esperar unos minutos.`);
+
+                if (response.status === 429) {
+                    let customMsg = `Límite superado: ${errorMsg}`;
+                    if (errorMsg.includes('limit: 0')) {
+                        customMsg = "Tu cuenta de Google no tiene permiso para usar Gemini gratis en esta región o con este modelo. Prueba a crear una clave nueva en Google AI Studio asegurándote de que no hay restricciones.";
+                    }
+                    throw new APIError('ERR_OPENAI_RATE', customMsg);
+                }
                 throw new APIError('ERR_OPENAI_REQUEST', `Error de Gemini (${response.status}): ${errorMsg}`);
             }
 

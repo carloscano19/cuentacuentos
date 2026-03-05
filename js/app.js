@@ -1,7 +1,7 @@
 // js/app.js
 import { storage } from './storage.js';
 import { buildUserPrompt } from './prompt.js';
-import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=3';
+import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=4';
 import { StoryPlayer } from './player.js';
 
 // --- Estado Global ---

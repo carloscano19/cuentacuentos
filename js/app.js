@@ -386,7 +386,7 @@ function handleError(error) {
         },
         'ERR_OPENAI_RATE': {
             title: "Límite superado / Sin Saldo",
-            desc: `Los servidores están saturados o tu cuenta de ${providerName} no tiene créditos.`,
+            desc: error.message || `Los servidores están saturados o tu cuenta de ${providerName} no tiene créditos.`,
             cta: "Reintentar en 30s",
             action: () => handleGenerate()
         },

@@ -48,7 +48,7 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
         } else if (provider === 'gemini') {
             const trimmedKey = apiKey.trim();
             // Usamos v1beta para system_instruction, pero si falla con 400 clave inválida, damos un mensaje más útil
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${trimmedKey}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${trimmedKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -78,7 +78,7 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
                 }
 
                 if (response.status === 401 || response.status === 403) throw new APIError('ERR_OPENAI_KEY', `Clave inválida o bloqueada: ${errorMsg}`);
-                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', 'Límite de cuota de Gemini superado.');
+                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', `Límite de cuota: ${errorMsg}`);
                 throw new APIError('ERR_OPENAI_REQUEST', `Error de Gemini (${response.status}): ${errorMsg}`);
             }
 

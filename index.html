@@ -206,6 +206,12 @@
                             <div class="text-2xl mb-1">🧑‍🎓</div>
                             <div class="text-sm font-medium">9-12 años</div>
                         </button>
+                        <button
+                            class="age-card selection-card p-4 rounded-xl text-center hover:bg-white/5 transition-all"
+                            data-age="adult">
+                            <div class="text-2xl mb-1">🍷</div>
+                            <div class="text-sm font-medium">+18 Adultos</div>
+                        </button>
                     </div>
                 </section>
 
@@ -213,11 +219,20 @@
                 <section>
                     <label class="block text-lg font-medium mb-2">👤 Personajes principales <span
                             class="text-sm opacity-50">(opcional)</span></label>
-                    <div class="flex gap-2 mb-3">
-                        <input type="text" id="input-character" class="input-magical flex-1 p-3 rounded-xl"
-                            placeholder="Ej: Luna la conejita...">
-                        <button id="btn-add-char"
-                            class="bg-white/10 p-3 rounded-xl hover:bg-white/20 transition-all">+</button>
+                    <div class="flex flex-col gap-2 mb-3">
+                        <div class="flex gap-2">
+                            <input type="text" id="input-character" class="input-magical flex-1 p-3 rounded-xl"
+                                placeholder="Ej: Luna la conejita...">
+                            <button id="btn-add-char"
+                                class="bg-white/10 p-3 rounded-xl hover:bg-white/20 transition-all">+</button>
+                        </div>
+                        <div class="flex gap-2">
+                            <button
+                                class="gender-btn flex-1 p-2 rounded-lg bg-white/5 border border-white/10 text-sm selected"
+                                data-gender="girl">👧 Niña</button>
+                            <button class="gender-btn flex-1 p-2 rounded-lg bg-white/5 border border-white/10 text-sm"
+                                data-gender="boy">👦 Niño</button>
+                        </div>
                     </div>
                     <div id="char-chips" class="flex flex-wrap gap-2">
                         <!-- Chips go here -->
@@ -276,6 +291,39 @@
                         <button class="theme-card selection-card p-4 rounded-xl text-center" data-theme="toys">
                             <div class="text-2xl mb-1">🧸</div>
                             <div class="text-xs">Mundo Juguete</div>
+                        </button>
+                        <!-- Temas Adultos (Hidden by default) -->
+                        <button class="theme-card selection-card p-4 rounded-xl text-center hidden"
+                            data-theme="mystery">
+                            <div class="text-2xl mb-1">🕵️‍♂️</div>
+                            <div class="text-xs">Misterio</div>
+                        </button>
+                        <button class="theme-card selection-card p-4 rounded-xl text-center hidden" data-theme="horror">
+                            <div class="text-2xl mb-1">🧛‍♂️</div>
+                            <div class="text-xs">Miedo / Terror</div>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- Sección especial: Nivel de Intensidad (Solo para Adultos/Terror) -->
+                <section id="section-fear-level" class="hidden animate-fade-in">
+                    <label class="block text-lg font-medium mb-4">🌑 Grado de Miedo / Intensidad</label>
+                    <div class="grid grid-cols-3 gap-2 p-1 bg-white/5 rounded-2xl">
+                        <button class="fear-card p-3 rounded-xl text-center text-xs transition-all hover:bg-white/5"
+                            data-fear="low">
+                            <div class="font-bold">Suave</div>
+                            <div class="opacity-50 mt-1 italic">Suspense</div>
+                        </button>
+                        <button
+                            class="fear-card p-3 rounded-xl text-center text-xs transition-all bg-white/10 shadow-lg text-white font-medium"
+                            data-fear="medium">
+                            <div class="font-bold">Medio</div>
+                            <div class="opacity-50 mt-1 italic">Escalofriante</div>
+                        </button>
+                        <button class="fear-card p-3 rounded-xl text-center text-xs transition-all hover:bg-white/5"
+                            data-fear="high">
+                            <div class="font-bold">Intenso</div>
+                            <div class="opacity-50 mt-1 italic">Pesadilla</div>
                         </button>
                     </div>
                 </section>

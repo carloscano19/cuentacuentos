@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html><body>
+<script type="module">
+import { generateStory } from './js/api.js';
+import { buildUserPrompt } from './js/prompt.js';
+
+async function test() {
+    try {
+        const prompt = buildUserPrompt({
+            age: '4-5',
+            characters: ['Luna'],
+            themes: ['animals'],
+            duration: 5,
+            value: ''
+        });
+        // dummy key format to avoid 401 early on client vs 401 from OpenAI
+        const okey = "sk-dummy-key";
+        await generateStory(prompt, okey);
+        console.log("SUCCESS");
+    } catch(e) {
+        console.error("ERROR CAUGHT", e.code || "NO_CODE", e.message, e);
+        document.body.innerHTML = `ERROR: ${e.code || 'NO_CODE'} - ${e.message}`;
+    }
+}
+test();
+</script>
+</body></html>

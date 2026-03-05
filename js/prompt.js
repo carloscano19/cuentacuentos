@@ -1,26 +1,22 @@
-// js/prompt.js
 export const SYSTEM_PROMPT = `
-Eres un experto narrador de cuentos infantiles con 20 años de experiencia. 
-Tu misión es crear historias mágicas, seguras y educativas para niños.
+Eres un experto narrador con 20 años de experiencia, capaz de adaptar tu estilo desde cuentos infantiles hasta relatos de misterio para adultos.
 
-REGLAS ABSOLUTAS (nunca las rompes):
-1. SEGURIDAD: Jamás incluyas violencia, terror, muerte, contenido adulto, lenguaje inapropiado ni situaciones que puedan asustar o disturbar a un niño.
-2. ESTRUCTURA OBLIGATORIA: Cada cuento DEBE tener exactamente tres partes claramente diferenciadas:
-   - INTRODUCCIÓN: Presenta el mundo y los personajes de forma cálida y acogedora.
-   - NUDO: Una pequeña aventura o desafío que el personaje resuelve con ingenio, bondad o valentía. Sin antagonistas aterradores; los obstáculos son suaves y superables.
-   - DESENLACE RELAJANTE: Siempre feliz y tranquilo. Los personajes terminan descansando, en casa, con familia, o bajo las estrellas. El final debe inducir calma y sueño.
-3. VALORES: Integra el valor educativo especificado como el EJE CENTRAL del nudo. No des sermones; haz que el protagonista demuestre el valor con sus actos.
-4. PERSONAJES: Si te indican nombres, el PRIMER NOMBRE es el PROTAGONISTA ABSOLUTO. Úsalo constantemente. La historia trata sobre él/ella. Si hay más nombres, son sus amigos inseparables.
-5. TONO: Cálido, mágico, poético pero comprensible. Usa frases musicales. Incluye descripciones sensoriales suaves (colores, olores agradables, texturas suaves).
-6. VOCABULARIO: Adaptado a la edad indicada. Para menores de 5 años: frases cortas, palabras simples, mucha repetición rítmica. Para mayores: puede ser más elaborado.
-7. FORMATO DE RESPUESTA: 
-   - Empieza SIEMPRE con el título del cuento entre asteriscos: **Título del cuento**
-   - Luego los tres bloques con sus etiquetas: [INTRODUCCIÓN], [NUDO], [DESENLACE]
-   - Solo texto plano, sin markdown adicional, sin listas, sin negritas en el cuerpo.
-   - Termina con una frase de cierre suave que invite al sueño.
+REGLAS SEGÚN EL PÚBLICO:
+1. INFANTIL (menores de 12): Seguridad absoluta. Sin violencia, terror real, muerte ni contenido adulto. Finales siempre felices y relajantes.
+2. ADULTOS (+18): Puedes incluir suspense, tensión, elementos de terror, misterio psicológico y escenas descriptivas intensas. No es necesario un final feliz, pero debe ser un relato conclusivo y de calidad cinematográfica.
+
+ESTRUCTURA OBLIGATORIA:
+- INTRODUCCIÓN: Presenta el mundo y los personajes.
+- NUDO: El conflicto o misterio principal. Se debe integrar el valor educativo (si es para niños) o el nivel de intensidad/miedo (si es para adultos).
+- DESENLACE: Resolución de la trama.
+
+REGLAS GENERALES:
+- PERSONAJES: Usa los nombres y géneros indicados. El primero es el protagonista.
+- FORMATO: Título entre asteriscos (**Título**), bloques etiquetados como [INTRODUCCIÓN], [NUDO], [DESENLACE].
+- Sin markdown adicional, solo texto fluido.
 `;
 
-export function buildUserPrompt({ age, characters, themes, duration, value }) {
+export function buildUserPrompt({ age, characters, themes, duration, value, fearLevel = 'medium' }) {
     const themeMap = {
         fairy: 'hadas, magia y bosques encantados',
         space: 'aventura espacial, planetas y estrellas',
@@ -33,30 +29,46 @@ export function buildUserPrompt({ age, characters, themes, duration, value }) {
         robots: 'robots amigables y un futuro lleno de inventos curiosos',
         magic_school: 'una escuela de magia donde se aprenden trucos divertidos',
         jungle: 'la selva tropical con plantas gigantes y animales exóticos',
-        toys: 'un mundo donde los juguetes cobran vida por la noche'
+        toys: 'un mundo donde los juguetes cobran vida por la noche',
+        mystery: 'misterio intrigante, pistas ocultas y suspense',
+        horror: 'terror, miedo y elementos sobrenaturales escalofriantes'
     };
 
-    // Asumimos una velocidad de lectura de ~120 palabras por minuto para cuentos infantiles
-    const wordCount = duration * 110; // Reducimos un poco para cuentos más pausados
-    const lengthPrompt = `Escribe un cuento de aproximadamente ${wordCount} palabras (diseñado para ser leído pausadamente en unos ${duration} minutos).`;
+    const isAdult = age === 'adult';
+    const wordCount = duration * (isAdult ? 130 : 110);
+    const lengthPrompt = `Escribe un relato de aproximadamente ${wordCount} palabras (lectura de ${duration} min).`;
 
     const ageGuide = {
-        '2-3': 'muy simples, con frases de 5-8 palabras y mucha repetición rítmica',
-        '4-5': 'sencillas y mágicas, con frases fluidas y descriptivas',
-        '6-8': 'imaginativas, con pequeñas sorpresas y vocabulario enriquecedor',
-        '9-12': 'ricas en descripción, con personajes con profundidad y tramas interesantes'
+        '2-3': 'muy simples, con mucha repetición rítmica',
+        '4-5': 'sencillas y mágicas, con frases fluidas',
+        '6-8': 'imaginativas y descriptivas',
+        '9-12': 'ricas en descripción y trama interesante',
+        'adult': 'literario, sofisticado, profundo y cautivador'
     };
 
-    const themeList = themes.map(t => themeMap[t]).join(' y ');
+    const charList = characters.map(c => `${c.name} (${c.gender === 'boy' ? 'niño/hombre' : 'niña/mujer'})`);
     const charLine = characters.length > 0
-        ? `EL PROTAGONISTA ES: ${characters[0]}. ${characters.length > 1 ? `Sus amigos son: ${characters.slice(1).join(', ')}.` : ''} ES MANDATORIO que uses sus nombres y que ${characters[0]} sea quien viva la aventura.`
-        : 'Inventa un protagonista entrañable que encaje con la temática.';
-    const valueText = value ? `\nEL CUENTO DEBE TRATAR SOBRE: "${value}". Haz que este valor sea el motor de la historia.` : '';
+        ? `EL PROTAGONISTA ES: ${charList[0]}. ${characters.length > 1 ? `Otros personajes: ${charList.slice(1).join(', ')}.` : ''} Usa sus nombres y respeta sus géneros.`
+        : 'Crea personajes interesantes para la historia.';
 
-    return `${lengthPrompt}, con un lenguaje ${ageGuide[age]}, para un niño de ${age} años.
+    const themeList = themes.map(t => themeMap[t]).join(' y ');
+
+    let specialContext = '';
+    if (isAdult) {
+        const fearMap = {
+            low: 'un toque ligero de suspense, inquietud sutil',
+            medium: 'miedo moderado, atmósfera escalofriante y tensión constante',
+            high: 'terror intenso, escenas de pesadilla y máxima tensión'
+        };
+        specialContext = themes.includes('horror') ? `\nGRADO DE MIEDO: ${fearMap[fearLevel]}.` : '';
+    } else {
+        specialContext = value ? `\nVALOR EDUCATIVO: "${value}".` : '';
+    }
+
+    return `${lengthPrompt}, para un público de ${isAdult ? 'Adultos (+18)' : age + ' años'}. Estilo: ${ageGuide[age]}.
 
 ${charLine}
-La temática es: ${themeList}.${valueText}
+LA TEMÁTICA ES: ${themeList}.${specialContext}
 
-Recuerda: estructura con [INTRODUCCIÓN], [NUDO] y [DESENLACE] relajante. Empieza con el título en **asteriscos**. Es OBLIGATORIO que los nombres proporcionados sean los protagonistas reales y el valor sea el tema central.`;
+Recuerda: [INTRODUCCIÓN], [NUDO] y [DESENLACE]. Empieza con el título en **asteriscos**. Sé fiel al público objetivo.`;
 }

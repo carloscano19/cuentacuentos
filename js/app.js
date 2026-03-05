@@ -7,10 +7,12 @@ import { StoryPlayer } from './player.js';
 // --- Estado Global ---
 const state = {
     age: null,
-    characters: [],
+    characters: [], // Array de objetos { name, gender }
+    currentGender: 'girl',
     themes: [],
     length: 10,
     value: '',
+    fearLevel: 'medium', // 'low', 'medium', 'high'
     audioUrl: null,
     audioEnabled: true,
     audioSource: 'none', // 'none', 'elevenlabs', 'openai', 'browser'
@@ -45,12 +47,14 @@ function showView(viewId) {
 
 function updateCharChips() {
     charChipsContainer.innerHTML = '';
-    state.characters.forEach((char, index) => {
+    state.characters.forEach((charObj, index) => {
         const chip = document.createElement('div');
         chip.className = 'bg-white/10 px-3 py-1 rounded-lg text-sm flex items-center gap-2 border border-white/10';
+        const icon = charObj.gender === 'boy' ? '👦' : '👧';
         chip.innerHTML = `
-      <span>${char}</span>
-      <button class="hover:text-red-400" onclick="removeCharacter(${index})">×</button>
+      <span class="opacity-70">${icon}</span>
+      <span>${charObj.name}</span>
+      <button class="hover:text-red-400 font-bold ml-1" onclick="removeCharacter(${index})">×</button>
     `;
         charChipsContainer.appendChild(chip);
     });
@@ -169,8 +173,9 @@ async function handleGenerate() {
     try {
         // Capturar automáticamente cualquier texto que el usuario haya dejado en los inputs sin pulsar "+"
         const hangingChar = inputChar.value.trim();
-        if (hangingChar && state.characters.length < 3 && !state.characters.includes(hangingChar)) {
-            state.characters.push(hangingChar);
+        const alreadyExists = state.characters.some(c => c.name.toLowerCase() === hangingChar.toLowerCase());
+        if (hangingChar && state.characters.length < 3 && !alreadyExists) {
+            state.characters.push({ name: hangingChar, gender: state.currentGender });
             updateCharChips();
         }
 
@@ -182,7 +187,8 @@ async function handleGenerate() {
             characters: state.characters,
             themes: state.themes,
             duration: state.length,
-            value: state.value
+            value: state.value,
+            fearLevel: state.fearLevel
         });
 
         const storyText = await generateStory(userPrompt, storage.get('OPENAI_KEY') || state.tempKeys?.oKey);
@@ -217,10 +223,10 @@ async function handleGenerate() {
 
 function renderStory(text) {
     const titleMatch = text.match(/\*\*(.*?)\*\*/);
-    const title = titleMatch ? titleMatch[1] : "Cuento Mágico";
+    const title = titleMatch ? titleMatch[1] : "Historia Mágica";
     document.getElementById('story-title').textContent = title;
 
-    const charPart = state.characters.length > 0 ? `Para ${state.characters[0]} · ` : '';
+    const charPart = state.characters.length > 0 ? `Para ${state.characters[0].name} · ` : '';
     document.getElementById('story-meta').textContent = `${charPart}${state.themes.join(', ')}`;
 
     const content = text.replace(/\*\*(.*?)\*\*/, '').trim();
@@ -507,15 +513,39 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.age-card').forEach(c => c.classList.remove('selected', 'bg-white/10'));
             card.classList.add('selected', 'bg-white/10');
             state.age = card.dataset.age;
+
+            // Mostrar/Ocultar temas de adultos y sección de miedo
+            const isAdult = state.age === 'adult';
+            document.querySelectorAll('.theme-card[data-theme="mystery"], .theme-card[data-theme="horror"]')
+                .forEach(c => c.classList.toggle('hidden', !isAdult));
+
+            // Si pasamos de adulto a niño y había temas de adultos seleccionados, los quitamos
+            if (!isAdult) {
+                state.themes = state.themes.filter(t => t !== 'mystery' && t !== 'horror');
+                document.querySelectorAll('.theme-card[data-theme="mystery"], .theme-card[data-theme="horror"]')
+                    .forEach(c => c.classList.remove('selected', 'bg-white/10'));
+            }
+
+            updateFearSection();
             validateWorkshop();
+        };
+    });
+
+    // Workshop - Género
+    document.querySelectorAll('.gender-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.gender-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            state.currentGender = btn.dataset.gender;
         };
     });
 
     // Workshop - Personajes
     btnAddChar.onclick = () => {
         const char = inputChar.value.trim();
-        if (char && state.characters.length < 3) {
-            state.characters.push(char);
+        const alreadyExists = state.characters.some(c => c.name.toLowerCase() === char.toLowerCase());
+        if (char && state.characters.length < 3 && !alreadyExists) {
+            state.characters.push({ name: char, gender: state.currentGender });
             inputChar.value = '';
             updateCharChips();
         }
@@ -532,7 +562,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.themes.push(theme);
                 card.classList.add('selected', 'bg-white/10');
             }
+            updateFearSection();
             validateWorkshop();
+        };
+    });
+
+    // Workshop - Nivel de Miedo
+    document.querySelectorAll('.fear-card').forEach(card => {
+        card.onclick = () => {
+            document.querySelectorAll('.fear-card').forEach(c => c.classList.remove('selected', 'bg-white/10', 'shadow-lg', 'text-white', 'font-medium'));
+            card.classList.add('selected', 'bg-white/10', 'shadow-lg', 'text-white', 'font-medium');
+            state.fearLevel = card.dataset.fear;
         };
     });
 
@@ -581,3 +621,10 @@ window.setTTSProvider = (provider) => {
     state.ttsProvider = provider;
     updateTTSUI();
 };
+
+function updateFearSection() {
+    const isAdult = state.age === 'adult';
+    const hasScaryTheme = state.themes.includes('horror') || state.themes.includes('mystery');
+    document.getElementById('section-fear-level').classList.toggle('hidden', !(isAdult && hasScaryTheme));
+}
+

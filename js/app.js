@@ -1,7 +1,7 @@
 // js/app.js
 import { storage } from './storage.js';
 import { buildUserPrompt } from './prompt.js';
-import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=7';
+import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=8';
 import { StoryPlayer } from './player.js';
 
 // --- Estado Global ---
@@ -262,7 +262,17 @@ function initBrowserPlayer(text) {
     timeCurrent.textContent = "Navegador";
     timeTotal.textContent = "Gratis";
 
-    const cleanText = text.replace(/\[.*?\]/g, '').trim();
+    // Limpiar todo el Markdown para que el TTS no lea "asterisco asterisco" etc.
+    const cleanText = text
+        .replace(/\[.*?\]/g, '')           // Quitar [INTRODUCCIÓN], [NUDO], etc.
+        .replace(/\*\*(.+?)\*\*/g, '$1')   // **negrita** → solo texto
+        .replace(/\*(.+?)\*/g, '$1')       // *cursiva* → solo texto
+        .replace(/#{1,6}\s*/g, '')         // # Títulos → sin símbolo
+        .replace(/`{1,3}.*?`{1,3}/g, '')   // `código` → eliminar
+        .replace(/\n{2,}/g, '. ')          // Párrafos → pausa natural
+        .replace(/\n/g, ' ')               // Saltos de línea → espacio
+        .replace(/\s{2,}/g, ' ')           // Espacios múltiples → uno
+        .trim();
     // Dividir en bloques pequeños (oraciones) para evitar bugs de corte prematuro
     const sentences = cleanText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [cleanText];
     let currentChunk = 0;

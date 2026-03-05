@@ -46,7 +46,9 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
             return data.choices[0].message.content;
 
         } else if (provider === 'gemini') {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+            const trimmedKey = apiKey.trim();
+            // Usamos v1beta para system_instruction, pero si falla con 400 clave inválida, damos un mensaje más útil
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${trimmedKey}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -69,9 +71,15 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
                 const errorData = await response.json().catch(() => ({}));
                 console.error("Gemini Error:", response.status, errorData);
                 const errorMsg = errorData?.error?.message || response.statusText;
-                if (response.status === 401 || response.status === 403) throw new APIError('ERR_OPENAI_KEY', `Clave inválida: ${errorMsg}`);
-                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', 'Límite de cuota excedido');
-                throw new APIError('ERR_OPENAI_REQUEST', `Error de Gemini: ${errorMsg}`);
+
+                // Error 400 con "API key not valid" suele ser por la clave en sí
+                if (response.status === 400 && errorMsg.toLowerCase().includes('key not valid')) {
+                    throw new APIError('ERR_OPENAI_KEY', 'La clave de Gemini no parece válida. Asegúrate de copiar el código completo (empieza por AIza) y que sea de Google AI Studio.');
+                }
+
+                if (response.status === 401 || response.status === 403) throw new APIError('ERR_OPENAI_KEY', `Clave inválida o bloqueada: ${errorMsg}`);
+                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', 'Límite de cuota de Gemini superado.');
+                throw new APIError('ERR_OPENAI_REQUEST', `Error de Gemini (${response.status}): ${errorMsg}`);
             }
 
             const data = await response.json();

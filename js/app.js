@@ -21,7 +21,8 @@ const state = {
     openaiVoice: 'shimmer',
     player: null,
     generatedStoryText: '',
-    currentView: 'onboarding'
+    currentView: 'onboarding',
+    textProvider: 'openai'
 };
 
 // --- Selectores ---
@@ -72,36 +73,6 @@ function validateWorkshop() {
     btnCreate.disabled = !isValid;
 }
 
-function updateCostEstimation() {
-    // Estimate tokens and audio chars based on duration in minutes
-    const tokensPerMin = 130; // Slightly lower for more precise targets
-    const charsPerMin = 450;
-    const tokenCost = state.length * tokensPerMin;
-    const charCost = state.length * charsPerMin;
-
-    const GPT4O_MIN_PER_TOKEN = 0.00000015;
-    const ELEVEN_PER_CHAR = 0.000030;
-
-    const textCost = tokenCost * GPT4O_MIN_PER_TOKEN;
-    const isElevenLabs = storage.get('EL_KEY');
-
-    const audioCost = (state.audioEnabled && isElevenLabs) ? charCost * ELEVEN_PER_CHAR : 0;
-
-    document.getElementById('cost-text').textContent = `~$${textCost.toFixed(4)}`;
-    document.getElementById('cost-audio-row').classList.toggle('hidden', !state.audioEnabled);
-
-    const audioLabel = document.getElementById('cost-audio-row').querySelector('span');
-    if (isElevenLabs) {
-        audioLabel.textContent = "Audio ElevenLabs ✨:";
-        document.getElementById('cost-audio').textContent = `~$${audioCost.toFixed(4)}`;
-    } else {
-        audioLabel.textContent = "Audio Navegador (Gratis) 🆓:";
-        document.getElementById('cost-audio').textContent = `$0.0000`;
-    }
-
-    document.getElementById('cost-total').textContent = `~$${(textCost + audioCost).toFixed(4)}`;
-}
-
 // --- PDF Generation ---
 function downloadPDF() {
     const element = document.getElementById('view-story');
@@ -130,6 +101,8 @@ function downloadPDF() {
         storyBody.style.color = originalStyle;
     });
 }
+
+const sectionFearLevel = document.getElementById('section-fear-level');
 
 // --- Animación de Fondo: Estrellas ---
 function initStarfield() {
@@ -179,9 +152,6 @@ async function handleGenerate() {
             updateCharChips();
         }
 
-        // Asegurar que el valor (moraleja) esté sincronizado con el input
-        state.value = inputValue.value.trim();
-
         const userPrompt = buildUserPrompt({
             age: state.age,
             characters: state.characters,
@@ -191,7 +161,13 @@ async function handleGenerate() {
             fearLevel: state.fearLevel
         });
 
-        const storyText = await generateStory(userPrompt, storage.get('OPENAI_KEY') || state.tempKeys?.oKey);
+        const storyApiKey = state.textProvider === 'gemini'
+            ? (storage.get('GEMINI_KEY') || state.tempKeys?.gKey)
+            : (storage.get('OPENAI_KEY') || state.tempKeys?.oKey);
+
+        if (!storyApiKey) throw new APIError('ERR_OPENAI_KEY', `Falta la clave de ${state.textProvider}`);
+
+        const storyText = await generateStory(userPrompt, storyApiKey, state.textProvider);
         state.generatedStoryText = storyText;
 
         const elKey = storage.get('EL_KEY') || state.tempKeys?.eKey;
@@ -450,10 +426,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Cargar datos guardados
     document.getElementById('input-openai-key').value = storage.get('OPENAI_KEY') || '';
+    document.getElementById('input-gemini-key').value = storage.get('GEMINI_KEY') || '';
     document.getElementById('input-el-key').value = storage.get('EL_KEY') || '';
     document.getElementById('input-el-voice').value = storage.get('EL_VOICE') || '';
     const shouldRemember = storage.get('REMEMBER_KEYS') === 'true';
     document.getElementById('check-remember').checked = shouldRemember;
+
+    state.textProvider = storage.get('TEXT_PROVIDER') || 'openai';
+    updateTextProviderUI();
 
     state.browserVoice = storage.get('BROWSER_VOICE');
     state.ttsProvider = storage.get('TTS_PROVIDER') || 'elevenlabs';
@@ -471,29 +451,34 @@ document.addEventListener('DOMContentLoaded', () => {
     // Onboarding
     document.getElementById('btn-start').onclick = () => {
         const oKey = document.getElementById('input-openai-key').value.trim();
+        const gKey = document.getElementById('input-gemini-key').value.trim();
         const eKey = document.getElementById('input-el-key').value.trim();
         const vId = document.getElementById('input-el-voice').value.trim();
         const remember = document.getElementById('check-remember').checked;
 
-        if (!oKey) return alert('La API Key de OpenAI es obligatoria');
+        if (!oKey && !gKey) return alert('Debes introducir al menos una API Key (OpenAI o Gemini)');
 
         // Guardar preferencia de "recordar"
         storage.set('REMEMBER_KEYS', remember);
 
         if (remember) {
             storage.set('OPENAI_KEY', oKey);
+            storage.set('GEMINI_KEY', gKey);
             storage.set('EL_KEY', eKey);
             storage.set('EL_VOICE', vId);
         } else {
             // Si no quiere recordar, guardamos en el estado de la sesión actual 
             // pero borramos del localStorage físico para la próxima vez
             storage.remove('OPENAI_KEY');
+            storage.remove('GEMINI_KEY');
             storage.remove('EL_KEY');
             storage.remove('EL_VOICE');
 
             // Inyectamos manualmente en el estado para esta sesión
-            state.tempKeys = { oKey, eKey, vId };
+            state.tempKeys = { oKey, gKey, eKey, vId };
         }
+
+        storage.set('TEXT_PROVIDER', state.textProvider);
 
         storage.set('TTS_PROVIDER', state.ttsProvider);
         storage.set('OPENAI_VOICE', state.openaiVoice);
@@ -502,7 +487,6 @@ document.addEventListener('DOMContentLoaded', () => {
         storage.set('ONBOARDING', true);
 
         showView('workshop');
-        updateCostEstimation();
     };
 
     btnSettings.onclick = () => showView('onboarding');
@@ -582,7 +566,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.len-card').forEach(c => c.classList.remove('bg-white/10', 'text-white', 'font-medium', 'shadow-lg'));
             card.classList.add('bg-white/10', 'text-white', 'font-medium', 'shadow-lg');
             state.length = parseInt(card.dataset.len, 10);
-            updateCostEstimation();
         };
     });
 
@@ -594,7 +577,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('toggle-audio').onchange = (e) => {
         state.audioEnabled = e.target.checked;
-        updateCostEstimation();
     };
 
     btnCreate.onclick = handleGenerate;
@@ -616,6 +598,22 @@ function updateTTSUI() {
     document.getElementById('provider-elevenlabs').classList.toggle('text-white', !isOpenAI);
     document.getElementById('provider-elevenlabs').classList.toggle('text-secondary', isOpenAI);
 }
+
+function updateTextProviderUI() {
+    const isGemini = state.textProvider === 'gemini';
+    document.getElementById('text-provider-openai').classList.toggle('bg-white/10', !isGemini);
+    document.getElementById('text-provider-openai').classList.toggle('text-white', !isGemini);
+    document.getElementById('text-provider-openai').classList.toggle('text-secondary', isGemini);
+
+    document.getElementById('text-provider-gemini').classList.toggle('bg-white/10', isGemini);
+    document.getElementById('text-provider-gemini').classList.toggle('text-white', isGemini);
+    document.getElementById('text-provider-gemini').classList.toggle('text-secondary', !isGemini);
+}
+
+window.setTextProvider = (provider) => {
+    state.textProvider = provider;
+    updateTextProviderUI();
+};
 
 window.setTTSProvider = (provider) => {
     state.ttsProvider = provider;

@@ -45,6 +45,39 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
             }
             return data.choices[0].message.content;
 
+        } else if (provider === 'gemini') {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{
+                            text: `SYSTEM INSTRUCTIONS: ${SYSTEM_PROMPT}\n\nUSER PROMPT: ${prompt}`
+                        }]
+                    }],
+                    generationConfig: {
+                        maxOutputTokens: 2048,
+                        temperature: 0.9
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                console.error("Gemini Error:", response.status, errorData);
+                if (response.status === 400) throw new APIError('ERR_OPENAI_REQUEST', 'Gemini Bad Request (API Key possibly invalid)');
+                if (response.status === 429) throw new APIError('ERR_OPENAI_RATE', 'Gemini Quota Exceeded (Free Tier Limit)');
+                throw new APIError('ERR_OPENAI_NETWORK', 'Gemini Network error');
+            }
+
+            const data = await response.json();
+            if (!data.candidates || data.candidates.length === 0) {
+                throw new APIError('ERR_CONTENT_FILTER', 'Gemini content filter triggered');
+            }
+            return data.candidates[0].content.parts[0].text;
+
         } else if (provider === 'anthropic') {
             const response = await fetch('https://api.anthropic.com/v1/messages', {
                 method: 'POST',

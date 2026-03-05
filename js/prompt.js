@@ -58,7 +58,8 @@ export function buildUserPrompt({ age, characters, themes, duration, value, fear
         const fearMap = {
             low: 'un toque ligero de suspense, inquietud sutil',
             medium: 'miedo moderado, atmósfera escalofriante y tensión constante',
-            high: 'terror intenso, escenas de pesadilla y máxima tensión'
+            high: 'terror intenso, escenas de pesadilla y máxima tensión',
+            extreme: 'TERROR EXTREMO: atmósfera opresiva, horror psicológico profundo, situaciones macabras y una sensación de peligro inminente e inevitable. Sin límites en el suspense.'
         };
         specialContext = themes.includes('horror') ? `\nGRADO DE MIEDO: ${fearMap[fearLevel]}.` : '';
     } else {

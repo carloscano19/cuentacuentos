@@ -7,7 +7,8 @@ import { StoryPlayer } from './player.js';
 // --- Configuración SaaS ---
 // Cambiar a true para producción Android/SaaS
 const CONFIG = {
-    isSaaS: true,
+    // Detectamos si estamos en una App nativa. Si no, permitimos ver las claves para pruebas en web.
+    isSaaS: !!window.Capacitor,
     proxyUrl: 'https://tu-backend-api.com', // Futuro endpoint
     plans: {
         free: { name: 'El Aprendiz', desc: 'Narrativa estándar (Gratis)' },

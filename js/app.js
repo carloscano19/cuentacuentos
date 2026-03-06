@@ -1,7 +1,7 @@
 // js/app.js
 import { storage } from './storage.js';
 import { buildUserPrompt } from './prompt.js';
-import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=8';
+import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=9';
 import { StoryPlayer } from './player.js';
 
 // --- Estado Global ---
@@ -434,7 +434,7 @@ function initBrowserVoiceSelector() {
 
     if (!('speechSynthesis' in window)) return;
 
-    container.classList.remove('hidden');
+
 
     function populateVoices() {
         const voices = window.speechSynthesis.getVoices();

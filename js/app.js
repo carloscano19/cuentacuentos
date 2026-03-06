@@ -1,7 +1,7 @@
 // js/app.js
 import { storage } from './storage.js';
 import { buildUserPrompt } from './prompt.js';
-import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=9';
+import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=10';
 import { StoryPlayer } from './player.js';
 
 // --- Estado Global ---
@@ -498,6 +498,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const remember = document.getElementById('check-remember').checked;
 
         if (!oKey && !gKey) return alert('Debes introducir al menos una API Key (OpenAI o Gemini)');
+
+        // --- AUTO-CORRECCIÓN INTELIGENTE ---
+        // 1. Texto: Si no tiene clave para el proveedor elegido, pero sí para el otro, cambiamos
+        if (state.textProvider === 'gemini' && !gKey && oKey) {
+            setTextProvider('openai');
+        } else if (state.textProvider === 'openai' && !oKey && gKey) {
+            setTextProvider('gemini');
+        }
+
+        // 2. Audio: Si tiene clave de OpenAI pero no de ElevenLabs, forzamos OpenAI TTS para evitar voz robótica
+        if (oKey && !eKey && state.ttsProvider === 'elevenlabs') {
+            setTTSProvider('openai');
+        }
+
+        // 3. Voz OpenAI: Leer siempre el valor actual del select
+        state.openaiVoice = document.getElementById('select-openai-voice').value;
 
         // Guardar preferencia de "recordar"
         storage.set('REMEMBER_KEYS', remember);

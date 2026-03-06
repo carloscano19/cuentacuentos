@@ -4,6 +4,25 @@ import { buildUserPrompt } from './prompt.js';
 import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=11';
 import { StoryPlayer } from './player.js';
 
+// --- Firebase & Auth ---
+import { initializeApp } from 'firebase/app';
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+
+// CONFIGURACIÓN DE FIREBASE (El usuario debe rellenar esto)
+const firebaseConfig = {
+    apiKey: "TU_API_KEY",
+    authDomain: "tu-proyecto.firebaseapp.com",
+    projectId: "tu-proyecto",
+    storageBucket: "tu-proyecto.firebasestorage.app",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
 // --- Configuración SaaS ---
 // Cambiar a true para producción Android/SaaS
 const CONFIG = {
@@ -34,7 +53,9 @@ const state = {
     player: null,
     generatedStoryText: '',
     currentView: 'onboarding',
-    textProvider: 'openai'
+    textProvider: 'openai',
+    user: null,
+    userCredits: 0
 };
 
 // --- Selectores ---
@@ -143,7 +164,17 @@ async function handleGenerate() {
         { icon: "🎨", text: "Pintando las últimas estrellas...", duration: 2500 }
     ];
 
-    if (storage.isAudioMode()) {
+    // Validación de Créditos SaaS
+    const isPremiumText = state.textProvider === 'openai';
+    const isPremiumVoice = state.audioEnabled && (state.ttsProvider === 'elevenlabs' || state.ttsProvider === 'openai');
+    const isPremiumAction = isPremiumText || isPremiumVoice;
+
+    if (CONFIG.isSaaS && isPremiumAction && state.userCredits <= 0) {
+        handleError({ code: 'ERR_QUOTA', title: 'Sin Tickets Mágicos', desc: 'Te has quedado sin tickets para cuentos premium. Consigue más en la tienda.' });
+        return;
+    }
+
+    if (state.audioEnabled) {
         phases.push({ icon: "🎙️", text: "Grabando la voz mágica...", duration: 3000 });
     }
 
@@ -211,12 +242,35 @@ async function handleGenerate() {
         }
 
         clearInterval(phaseInterval);
+
+        // Descontar crédito si fue una acción premium exitosa
+        if (CONFIG.isSaaS && isPremiumAction) {
+            await consumeCredit();
+        }
+
         renderStory(storyText);
         showView('story');
     } catch (error) {
         clearInterval(phaseInterval);
         handleError(error);
     }
+}
+
+async function consumeCredit() {
+    try {
+        state.userCredits--;
+        await setDoc(doc(db, "users", state.user.uid), { credits: state.userCredits }, { merge: true });
+        updateCreditsUI();
+    } catch (e) {
+        console.error("Error descontando crédito:", e);
+    }
+}
+
+function updateCreditsUI() {
+    const el = document.getElementById('user-credits-display');
+    const badge = document.getElementById('user-credits-badge');
+    if (el) el.textContent = `${state.userCredits} ✨`;
+    if (badge) badge.classList.toggle('hidden', !state.user);
 }
 
 function renderStory(text) {
@@ -425,6 +479,18 @@ function handleError(error) {
             cta: "Reintentar",
             action: () => handleGenerate()
         },
+        'ERR_QUOTA': {
+            title: "Sin Tickets Mágicos",
+            desc: "Te has quedado sin tickets para cuentos premium. Consigue más en la tienda.",
+            cta: "Ir a la Tienda",
+            action: () => alert("La tienda abrirá pronto en la Google Play Store") // Placeholder for IAP
+        },
+        'ERR_AUTH': {
+            title: "Error de Sesión",
+            desc: "Hubo un problema al entrar con tu cuenta de Google.",
+            cta: "Reintentar",
+            action: () => showView('login')
+        },
         'ERR_ELEVENLABS_KEY': { title: "Voz no disponible", desc: "La API Key de ElevenLabs es incorrecta.", cta: "Continuar sin audio", action: () => { storage.set('AUDIO_MODE', false); renderStory(state.generatedStoryText); showView('story'); } },
         'ERR_ELEVENLABS_QUOTA': { title: "Sin créditos de audio", desc: "Te has quedado sin minutos de audio este mes.", cta: "Ver cuento en texto", action: () => { storage.set('AUDIO_MODE', false); renderStory(state.generatedStoryText); showView('story'); } },
         'ERR_CONTENT_FILTER': { title: "Personajes no válidos", desc: `Los personajes elegidos no pudieron crear una historia segura (${providerName}).`, cta: "Volver al taller", action: () => showView('workshop') }
@@ -495,8 +561,68 @@ document.addEventListener('DOMContentLoaded', () => {
     initBrowserVoiceSelector();
     updateTTSUI();
 
+    // --- Gestión de Sesión (Auth) ---
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            state.user = user;
+            console.log("Usuario logueado:", user.email);
+
+            // Cargar créditos desde Firestore
+            await loadUserCredits(user.uid);
+            updateCreditsUI();
+
+            // Si el usuario está logueado, vamos al onboarding (o workshop si ya lo pasó)
+            if (storage.get('ONBOARDING')) {
+                showView('workshop');
+            } else {
+                showView('onboarding');
+            }
+        } else {
+            state.user = null;
+            showView('login');
+        }
+    });
+
+    async function loadUserCredits(uid) {
+        try {
+            const userDoc = await getDoc(doc(db, "users", uid));
+            if (userDoc.exists()) {
+                state.userCredits = userDoc.data().credits || 0;
+            } else {
+                // Nuevo usuario: 1 crédito de regalo
+                await setDoc(doc(db, "users", uid), { credits: 1, email: state.user.email });
+                state.userCredits = 1;
+            }
+            console.log("Créditos del usuario:", state.userCredits);
+        } catch (e) {
+            console.error("Error cargando créditos:", e);
+            state.userCredits = 0; // Fallback
+        }
+    }
+
+    // --- Google Login Flow ---
+    document.getElementById('btn-google-login').onclick = async () => {
+        try {
+            if (window.Capacitor && Capacitor.isNativePlatform()) {
+                // Flujo Nativo (Android/iOS)
+                const { GoogleAuth } = Capacitor.Plugins;
+                const result = await GoogleAuth.signIn();
+                const credential = GoogleAuthProvider.credential(result.authentication.idToken);
+                await signInWithCredential(auth, credential);
+            } else {
+                // Flujo Web (para pruebas)
+                const provider = new GoogleAuthProvider();
+                const { signInWithPopup } = await import('firebase/auth');
+                await signInWithPopup(auth, provider);
+            }
+        } catch (error) {
+            console.error("Login Error:", error);
+            handleError({ code: 'ERR_AUTH', message: 'No se pudo iniciar sesión con Google.' });
+        }
+    };
+
     // Siempre empezamos en onboarding para mostrar el mensaje de bienvenida y configuración
-    showView('onboarding');
+    // showView('onboarding'); // This is now handled by auth state
 
     // Si ya está completo, el botón "Comenzar a crear" simplemente saltará al taller
     // (Ya pre-llenamos los campos arriba)

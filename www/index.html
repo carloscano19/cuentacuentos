@@ -17,6 +17,17 @@
     <link rel="stylesheet" href="css/custom.css">
     <!-- PDF Generation -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+    <!-- Firebase SDK (Modular) -->
+    <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/11.4.0/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/11.4.0/firebase-firestore.js"
+      }
+    }
+    </script>
 </head>
 
 <body class="bg-dreamy selection:bg-violet-500/30">
@@ -28,18 +39,46 @@
             <span class="text-2xl">🌙</span>
             <h1 class="text-xl font-bold font-playfair tracking-tight text-white">StoryDreams</h1>
         </div>
-        <button id="btn-settings"
-            class="p-2 rounded-full hover:bg-white/10 transition-colors text-white/70 hover:text-white">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path
-                    d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
-                <circle cx="12" cy="12" r="3" />
-            </svg>
-        </button>
+        <div class="flex items-center gap-3">
+            <div id="user-credits-badge"
+                class="hidden bg-white/10 px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2">
+                <span class="text-xs font-medium text-white/90" id="user-credits-display">0 ✨</span>
+            </div>
+            <button id="btn-settings"
+                class="p-2 rounded-full hover:bg-white/10 transition-colors text-white/70 hover:text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path
+                        d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+                    <circle cx="12" cy="12" r="3" />
+                </svg>
+            </button>
+        </div>
     </header>
 
     <main class="pt-24 pb-12 px-6 max-w-[720px] mx-auto min-h-screen relative overflow-hidden">
+
+        <!-- Vista 0: LOGIN ✨ -->
+        <section id="view-login"
+            class="view hidden w-full max-w-md mx-auto animate-fade-up flex flex-col items-center justify-center py-10">
+            <div
+                class="w-24 h-24 bg-gradient-to-br from-violet-500 to-fuchsia-600 rounded-3xl flex items-center justify-center text-5xl mb-8 shadow-2xl shadow-violet-500/20 rotate-3">
+                🌙
+            </div>
+            <h2 class="text-4xl font-bold font-playfair text-white mb-2 text-center">Bienvenido a StoryDreams</h2>
+            <p class="text-secondary opacity-80 text-center mb-10 max-w-[280px]">Entra para guardar tus cuentos y
+                acceder a narradores mágicos.</p>
+
+            <button id="btn-google-login"
+                class="w-full bg-white text-black py-4 px-6 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-white/90 transition-all shadow-xl active:scale-95">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/layout/google.svg" class="w-6 h-6"
+                    alt="Google">
+                <span>Continuar con Google</span>
+            </button>
+
+            <p class="mt-8 text-[10px] text-secondary/50 text-center max-w-[240px]">Al continuar, aceptas que la magia
+                fluya por tus venas y nuestros términos de fantasía.</p>
+        </section>
 
         <!-- Vista 1: ONBOARDING WIZARD -->
         <section id="view-onboarding" class="view hidden w-full max-w-2xl mx-auto animate-fade-up">

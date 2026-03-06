@@ -8,8 +8,19 @@ export class APIError extends Error {
     }
 }
 
-export async function generateStory(prompt, apiKey, provider = 'openai', model = '') {
+export async function generateStory(prompt, apiKey, provider = 'openai', model = '', proxyUrl = null) {
     try {
+        if (proxyUrl) {
+            const response = await fetch(`${proxyUrl}/generate-story`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt, provider, model })
+            });
+            if (!response.ok) throw new APIError('ERR_PROXY', 'Error en el servidor de cuentos');
+            const data = await response.json();
+            return data.text;
+        }
+
         if (provider === 'openai') {
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
@@ -162,7 +173,17 @@ export async function generateStory(prompt, apiKey, provider = 'openai', model =
     }
 }
 
-export async function generateAudio(text, apiKey, voiceId) {
+export async function generateAudio(text, apiKey, voiceId, proxyUrl = null) {
+    if (proxyUrl) {
+        const response = await fetch(`${proxyUrl}/generate-audio-el`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, voiceId })
+        });
+        if (!response.ok) throw new APIError('ERR_PROXY', 'Error en el servidor de voz');
+        const audioBlob = await response.blob();
+        return URL.createObjectURL(audioBlob);
+    }
     const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM'; // Rachel — voz cálida femenina
 
     try {
@@ -203,7 +224,17 @@ export async function generateAudio(text, apiKey, voiceId) {
         throw new APIError('ERR_ELEVENLABS_NETWORK', error.message);
     }
 }
-export async function generateOpenAIAudio(text, apiKey, voice = 'shimmer') {
+export async function generateOpenAIAudio(text, apiKey, voice = 'shimmer', proxyUrl = null) {
+    if (proxyUrl) {
+        const response = await fetch(`${proxyUrl}/generate-audio-oa`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, voice })
+        });
+        if (!response.ok) throw new APIError('ERR_PROXY', 'Error en el servidor de voz');
+        const audioBlob = await response.blob();
+        return URL.createObjectURL(audioBlob);
+    }
     try {
         const response = await fetch('https://api.openai.com/v1/audio/speech', {
             method: 'POST',

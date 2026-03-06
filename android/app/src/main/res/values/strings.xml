@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Cuentacuentos</string>
+    <string name="title_activity_main">Cuentacuentos</string>
+    <string name="package_name">com.carloscano.cuentacuentos</string>
+    <string name="custom_url_scheme">com.carloscano.cuentacuentos</string>
+</resources>

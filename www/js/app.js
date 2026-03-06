@@ -4,6 +4,17 @@ import { buildUserPrompt } from './prompt.js';
 import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=11';
 import { StoryPlayer } from './player.js';
 
+// --- Configuración SaaS ---
+// Cambiar a true para producción Android/SaaS
+const CONFIG = {
+    isSaaS: true,
+    proxyUrl: 'https://tu-backend-api.com', // Futuro endpoint
+    plans: {
+        free: { name: 'El Aprendiz', desc: 'Narrativa estándar (Gratis)' },
+        premium: { name: 'Mago Maestro', desc: 'Narrativa Avanzada (Premium)' }
+    }
+};
+
 // --- Estado Global ---
 const state = {
     age: null,
@@ -171,12 +182,13 @@ async function handleGenerate() {
         const gKey = sanitizeKey(rawGKey);
 
         const storyApiKey = state.textProvider === 'gemini' ? gKey : oKey;
+        const proxyUrl = CONFIG.isSaaS ? CONFIG.proxyUrl : null;
 
-        console.log(`Intentando generar con ${state.textProvider}. Clave (inicio): ${storyApiKey ? storyApiKey.substring(0, 8) + '...' : 'FALTA'}`);
+        console.log(`Intentando generar con ${state.textProvider}. Modo SaaS: ${CONFIG.isSaaS}`);
 
-        if (!storyApiKey) throw new APIError('ERR_OPENAI_KEY', `Falta la clave de ${state.textProvider}`);
+        if (!CONFIG.isSaaS && !storyApiKey) throw new APIError('ERR_OPENAI_KEY', `Falta la clave de ${state.textProvider}`);
 
-        const storyText = await generateStory(userPrompt, storyApiKey, state.textProvider);
+        const storyText = await generateStory(userPrompt, storyApiKey, state.textProvider, '', proxyUrl);
         state.generatedStoryText = storyText;
 
         const elKey = storage.get('EL_KEY') || state.tempKeys?.eKey;
@@ -184,11 +196,11 @@ async function handleGenerate() {
         const elVoice = storage.get('EL_VOICE') || state.tempKeys?.vId;
 
         if (state.audioEnabled) {
-            if (state.ttsProvider === 'elevenlabs' && elKey) {
-                state.audioUrl = await generateAudio(storyText, elKey, storage.get('EL_VOICE'));
+            if (state.ttsProvider === 'elevenlabs' && (elKey || CONFIG.isSaaS)) {
+                state.audioUrl = await generateAudio(storyText, elKey, storage.get('EL_VOICE'), proxyUrl);
                 state.audioSource = 'elevenlabs';
-            } else if (state.ttsProvider === 'openai' && oaKey) {
-                state.audioUrl = await generateOpenAIAudio(storyText, oaKey, state.openaiVoice);
+            } else if (state.ttsProvider === 'openai' && (oaKey || CONFIG.isSaaS)) {
+                state.audioUrl = await generateOpenAIAudio(storyText, oaKey, state.openaiVoice, proxyUrl);
                 state.audioSource = 'openai';
             } else {
                 state.audioSource = 'browser';
@@ -501,26 +513,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Validation Step 1
         if (window.currentWizStep === 1) {
-            if (state.textProvider === 'gemini' && !gKey) {
-                return showWizError('Por favor, indica tu clave de Gemini para continuar.');
+            if (!CONFIG.isSaaS) {
+                if (state.textProvider === 'gemini' && !gKey) {
+                    return showWizError('Por favor, indica tu clave de Gemini para continuar.');
+                }
+                if (state.textProvider === 'openai' && !oKey) {
+                    return showWizError('Por favor, indica tu clave de OpenAI para continuar.');
+                }
             }
-            if (state.textProvider === 'openai' && !oKey) {
-                return showWizError('Por favor, indica tu clave de OpenAI para continuar.');
-            }
-            // Auto-fix if they pasted the wrong key box
-            if (state.textProvider === 'gemini' && !gKey && oKey) window.setTextProvider('openai');
-            else if (state.textProvider === 'openai' && !oKey && gKey) window.setTextProvider('gemini');
-
             showWizError('');
         }
 
         // Validation Step 2
         if (window.currentWizStep === 2) {
-            if (state.ttsProvider === 'openai' && !oKey) {
-                return showWizError('El Narrador de OpenAI requiere poner tu clave en el Paso 1.');
-            }
-            if (state.ttsProvider === 'elevenlabs' && !eKey) {
-                return showWizError('Por favor, indica tu clave de ElevenLabs.');
+            if (!CONFIG.isSaaS) {
+                if (state.ttsProvider === 'openai' && !oKey) {
+                    return showWizError('El Narrador Pro requiere poner tu clave en el Paso 1.');
+                }
+                if (state.ttsProvider === 'elevenlabs' && !eKey) {
+                    return showWizError('Por favor, indica tu clave de ElevenLabs.');
+                }
             }
             showWizError('');
         }
@@ -740,6 +752,13 @@ function updateTTSUI() {
     document.getElementById('openai-voice-config').classList.toggle('hidden', p !== 'openai');
     document.getElementById('elevenlabs-voice-config').classList.toggle('hidden', p !== 'elevenlabs');
 
+    // En modo SaaS ocultamos los inputs de claves
+    if (CONFIG.isSaaS) {
+        document.getElementById('input-openai-key-audio')?.classList.add('hidden');
+        document.getElementById('input-el-key')?.classList.add('hidden');
+        document.getElementById('input-el-voice')?.classList.add('hidden');
+    }
+
     // Box styling updates
     const getStyle = (isActive) => isActive
         ? 'p-1 rounded-2xl border transition-all duration-300 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 border-violet-500/30 shadow-[0_0_20px_rgba(139,92,246,0.15)]'
@@ -769,7 +788,8 @@ function updateTextProviderUI() {
     document.getElementById('box-text-openai').className = getStyle(p === 'openai');
 
     // Toggle opacity of keys based on selection so it's clearer
-    document.getElementById('openai-key-box').classList.toggle('opacity-50', p !== 'openai');
+    document.getElementById('openai-key-box').classList.toggle('hidden', CONFIG.isSaaS || p !== 'openai');
+    document.getElementById('gemini-key-box').classList.toggle('hidden', CONFIG.isSaaS || p !== 'gemini');
 }
 
 window.setTextProvider = (provider) => {

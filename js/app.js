@@ -493,7 +493,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.nextWizStep = () => {
         const sanitizeKey = (k) => k.replace(/^(key|api\s*key|clave):\s*/i, '').trim();
-        const oKey = sanitizeKey(document.getElementById('input-openai-key').value);
+        const oKeyRaw1 = document.getElementById('input-openai-key').value;
+        const oKeyRaw2 = document.getElementById('input-openai-key-audio')?.value || '';
+        const oKey = sanitizeKey(oKeyRaw1 || oKeyRaw2);
         const gKey = sanitizeKey(document.getElementById('input-gemini-key').value);
         const eKey = sanitizeKey(document.getElementById('input-el-key').value);
 
@@ -594,7 +596,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-start').onclick = () => {
         const sanitizeKey = (k) => k.replace(/^(key|api\s*key|clave):\s*/i, '').trim();
-        const oKey = sanitizeKey(document.getElementById('input-openai-key').value);
+        const oKeyRaw1 = document.getElementById('input-openai-key').value;
+        const oKeyRaw2 = document.getElementById('input-openai-key-audio')?.value || '';
+        const oKey = sanitizeKey(oKeyRaw1 || oKeyRaw2);
         const gKey = sanitizeKey(document.getElementById('input-gemini-key').value);
         const eKey = sanitizeKey(document.getElementById('input-el-key').value);
         const vId = document.getElementById('input-el-voice').value.trim();

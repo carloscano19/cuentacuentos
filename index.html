@@ -142,7 +142,8 @@
                                         <label class="text-[10px] opacity-70 mb-1 block">Pega tu OpenAI API Key:</label>
                                         <input type="password" id="input-openai-key"
                                             class="input-magical w-full p-2.5 rounded-lg text-sm bg-white/5 border border-white/10"
-                                            placeholder="sk-...">
+                                            placeholder="sk-..."
+                                            oninput="const aud = document.getElementById('input-openai-key-audio'); if(aud) aud.value = this.value">
                                     </div>
                                 </div>
                             </label>
@@ -206,6 +207,10 @@
 
                                     <div id="openai-voice-config"
                                         class="hidden mt-2 bg-black/20 p-2 rounded relative z-10 pointer-events-auto">
+                                        <input type="password" id="input-openai-key-audio"
+                                            class="input-magical w-full p-2 mb-2 rounded bg-black/50 text-[11px]"
+                                            placeholder="API Key de OpenAI (Si no la pusiste en el paso 1)"
+                                            oninput="document.getElementById('input-openai-key').value = this.value">
                                         <label class="text-[10px] opacity-70 mb-1 block">Elige cómo quieres que
                                             suene:</label>
                                         <select id="select-openai-voice"
@@ -614,8 +619,8 @@
     <div id="starfield" class="fixed inset-0 pointer-events-none z-[-1]"></div>
 
     <!-- Scripts -->
-    <script src="js/api.js?v=11"></script>
-    <script type="module" src="js/app.js?v=11"></script>
+    <script src="js/api.js?v=12"></script>
+    <script type="module" src="js/app.js?v=12"></script>
 </body>
 
 </html>

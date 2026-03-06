@@ -11,12 +11,12 @@ import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 
 // CONFIGURACIÓN DE FIREBASE (El usuario debe rellenar esto)
 const firebaseConfig = {
-    apiKey: "TU_API_KEY",
-    authDomain: "tu-proyecto.firebaseapp.com",
-    projectId: "tu-proyecto",
-    storageBucket: "tu-proyecto.firebasestorage.app",
-    messagingSenderId: "123456789",
-    appId: "1:123456789:web:abcdef"
+    apiKey: "AIzaSyBVDD3COAaBdQnIUW6wuiM9swKCyIFDgUw",
+    authDomain: "cuentacuentos-299da.firebaseapp.com",
+    projectId: "cuentacuentos-299da",
+    storageBucket: "cuentacuentos-299da.firebasestorage.app",
+    messagingSenderId: "976654237332",
+    appId: "1:976654237332:web:f1bf09a990b329c060be81"
 };
 
 const app = initializeApp(firebaseConfig);

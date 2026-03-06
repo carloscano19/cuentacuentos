@@ -1,7 +1,7 @@
 // js/app.js
 import { storage } from './storage.js';
 import { buildUserPrompt } from './prompt.js';
-import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=10';
+import { generateStory, generateAudio, generateOpenAIAudio, APIError } from './api.js?v=11';
 import { StoryPlayer } from './player.js';
 
 // --- Estado Global ---
@@ -488,7 +488,110 @@ document.addEventListener('DOMContentLoaded', () => {
     // Si ya está completo, el botón "Comenzar a crear" simplemente saltará al taller
     // (Ya pre-llenamos los campos arriba)
 
-    // Onboarding
+    // --- ONBOARDING WIZARD ---
+    window.currentWizStep = 1;
+
+    window.nextWizStep = () => {
+        const sanitizeKey = (k) => k.replace(/^(key|api\s*key|clave):\s*/i, '').trim();
+        const oKey = sanitizeKey(document.getElementById('input-openai-key').value);
+        const gKey = sanitizeKey(document.getElementById('input-gemini-key').value);
+        const eKey = sanitizeKey(document.getElementById('input-el-key').value);
+
+        // Validation Step 1
+        if (window.currentWizStep === 1) {
+            if (state.textProvider === 'gemini' && !gKey) {
+                return showWizError('Por favor, indica tu clave de Gemini para continuar.');
+            }
+            if (state.textProvider === 'openai' && !oKey) {
+                return showWizError('Por favor, indica tu clave de OpenAI para continuar.');
+            }
+            // Auto-fix if they pasted the wrong key box
+            if (state.textProvider === 'gemini' && !gKey && oKey) window.setTextProvider('openai');
+            else if (state.textProvider === 'openai' && !oKey && gKey) window.setTextProvider('gemini');
+
+            showWizError('');
+        }
+
+        // Validation Step 2
+        if (window.currentWizStep === 2) {
+            if (state.ttsProvider === 'openai' && !oKey) {
+                return showWizError('El Narrador de OpenAI requiere poner tu clave en el Paso 1.');
+            }
+            if (state.ttsProvider === 'elevenlabs' && !eKey) {
+                return showWizError('Por favor, indica tu clave de ElevenLabs.');
+            }
+            showWizError('');
+        }
+
+        if (window.currentWizStep < 3) {
+            window.currentWizStep++;
+            updateWizUI();
+        }
+    };
+
+    window.prevWizStep = () => {
+        if (window.currentWizStep > 1) {
+            window.currentWizStep--;
+            updateWizUI();
+        }
+        showWizError('');
+    };
+
+    function showWizError(msg) {
+        document.getElementById('wiz-error').textContent = msg;
+    }
+
+    function updateWizUI() {
+        document.querySelectorAll('.wizard-content').forEach(d => d.classList.add('hidden'));
+        document.getElementById(`step-${window.currentWizStep}`).classList.remove('hidden');
+
+        const progress = ((window.currentWizStep - 1) / 2) * 100;
+        document.getElementById('wizard-progress-bar').style.width = `${progress}%`;
+
+        const btnPrev = document.getElementById('btn-wiz-prev');
+        const btnNext = document.getElementById('btn-wiz-next');
+        const btnStart = document.getElementById('btn-start');
+
+        for (let i = 1; i <= 3; i++) {
+            const ind = document.getElementById(`wiz-indicator-${i}`);
+            const circle = ind.querySelector('.wiz-circle');
+            const label = ind.querySelector('.wiz-label');
+
+            if (i < window.currentWizStep) {
+                ind.classList.remove('opacity-50');
+                circle.className = 'wiz-circle w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center font-bold mb-2 transition-all shadow-[0_0_10px_rgba(34,197,94,0.4)]';
+                circle.innerHTML = '✓';
+                label.classList.replace('text-secondary', 'text-white');
+            } else if (i === window.currentWizStep) {
+                ind.classList.remove('opacity-50');
+                circle.className = 'wiz-circle w-8 h-8 rounded-full bg-violet-500 text-white flex items-center justify-center font-bold mb-2 transition-all shadow-[0_0_15px_rgba(139,92,246,0.5)]';
+                circle.innerHTML = i;
+                label.classList.replace('text-secondary', 'text-white');
+            } else {
+                ind.classList.add('opacity-50');
+                circle.className = 'wiz-circle w-8 h-8 rounded-full bg-dreamy-card text-secondary flex items-center justify-center font-bold mb-2 transition-all';
+                circle.innerHTML = i;
+                label.classList.replace('text-white', 'text-secondary');
+            }
+        }
+
+        btnPrev.classList.toggle('opacity-0', window.currentWizStep === 1);
+        btnPrev.classList.toggle('pointer-events-none', window.currentWizStep === 1);
+
+        if (window.currentWizStep === 3) {
+            btnNext.classList.add('hidden');
+            btnStart.classList.remove('hidden');
+            btnStart.classList.add('flex');
+        } else {
+            btnNext.classList.remove('hidden');
+            btnStart.classList.add('hidden');
+            btnStart.classList.remove('flex');
+        }
+    }
+
+    // Inicializar Wizard
+    updateWizUI();
+
     document.getElementById('btn-start').onclick = () => {
         const sanitizeKey = (k) => k.replace(/^(key|api\s*key|clave):\s*/i, '').trim();
         const oKey = sanitizeKey(document.getElementById('input-openai-key').value);
@@ -497,25 +600,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const vId = document.getElementById('input-el-voice').value.trim();
         const remember = document.getElementById('check-remember').checked;
 
-        if (!oKey && !gKey) return alert('Debes introducir al menos una API Key (OpenAI o Gemini)');
-
-        // --- AUTO-CORRECCIÓN INTELIGENTE ---
-        // 1. Texto: Si no tiene clave para el proveedor elegido, pero sí para el otro, cambiamos
-        if (state.textProvider === 'gemini' && !gKey && oKey) {
-            setTextProvider('openai');
-        } else if (state.textProvider === 'openai' && !oKey && gKey) {
-            setTextProvider('gemini');
-        }
-
-        // 2. Audio: Si tiene clave de OpenAI pero no de ElevenLabs, forzamos OpenAI TTS para evitar voz robótica
-        if (oKey && !eKey && state.ttsProvider === 'elevenlabs') {
-            setTTSProvider('openai');
-        }
-
-        // 3. Voz OpenAI: Leer siempre el valor actual del select
         state.openaiVoice = document.getElementById('select-openai-voice').value;
 
-        // Guardar preferencia de "recordar"
         storage.set('REMEMBER_KEYS', remember);
 
         if (remember) {
@@ -532,7 +618,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         storage.set('TEXT_PROVIDER', state.textProvider);
-
         storage.set('TTS_PROVIDER', state.ttsProvider);
         storage.set('OPENAI_VOICE', state.openaiVoice);
         storage.set('BROWSER_VOICE', document.getElementById('select-browser-voice').value);
@@ -639,38 +724,53 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function updateTTSUI() {
-    const isOpenAI = state.ttsProvider === 'openai';
-    document.getElementById('openai-voice-config').classList.toggle('hidden', !isOpenAI);
-    document.getElementById('elevenlabs-voice-config').classList.toggle('hidden', isOpenAI);
+    const p = state.ttsProvider;
 
-    document.getElementById('provider-openai').classList.toggle('bg-white/10', isOpenAI);
-    document.getElementById('provider-openai').classList.toggle('text-white', isOpenAI);
-    document.getElementById('provider-openai').classList.toggle('text-secondary', !isOpenAI);
+    // Check radio buttons accurately
+    document.querySelectorAll('[name="wiz_audio"]').forEach(r => r.checked = false);
+    const radio = document.querySelector(`[name="wiz_audio"][value="${p}"]`);
+    if (radio) radio.checked = true;
 
-    document.getElementById('provider-elevenlabs').classList.toggle('bg-white/10', !isOpenAI);
-    document.getElementById('provider-elevenlabs').classList.toggle('text-white', !isOpenAI);
-    document.getElementById('provider-elevenlabs').classList.toggle('text-secondary', isOpenAI);
+    // Toggle dropdowns
+    document.getElementById('browser-voice-selection').classList.toggle('hidden', p !== 'browser');
+    document.getElementById('openai-voice-config').classList.toggle('hidden', p !== 'openai');
+    document.getElementById('elevenlabs-voice-config').classList.toggle('hidden', p !== 'elevenlabs');
+
+    // Box styling updates
+    const getStyle = (isActive) => isActive
+        ? 'p-1 rounded-2xl border transition-all duration-300 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 border-violet-500/30 shadow-[0_0_20px_rgba(139,92,246,0.15)]'
+        : 'p-1 rounded-2xl border transition-all duration-300 bg-white/5 border-white/10 opacity-70 hover:opacity-100';
+
+    const getGreenStyle = (isActive) => isActive
+        ? 'p-1 rounded-2xl border transition-all duration-300 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border-green-500/30 shadow-[0_0_20px_rgba(34,197,94,0.15)]'
+        : 'p-1 rounded-2xl border transition-all duration-300 bg-green-500/5 border-green-500/10 opacity-70 hover:opacity-100';
+
+    document.getElementById('box-audio-browser').className = getGreenStyle(p === 'browser');
+    document.getElementById('box-audio-openai').className = getStyle(p === 'openai');
+    document.getElementById('box-audio-elevenlabs').className = getStyle(p === 'elevenlabs');
 }
 
 function updateTextProviderUI() {
-    const isGemini = state.textProvider === 'gemini';
-    document.getElementById('text-provider-openai').classList.toggle('bg-white/10', !isGemini);
-    document.getElementById('text-provider-openai').classList.toggle('text-white', !isGemini);
-    document.getElementById('text-provider-openai').classList.toggle('text-secondary', isGemini);
+    const p = state.textProvider;
 
-    document.getElementById('text-provider-gemini').classList.toggle('bg-white/10', isGemini);
-    document.getElementById('text-provider-gemini').classList.toggle('text-white', isGemini);
-    document.getElementById('text-provider-gemini').classList.toggle('text-secondary', !isGemini);
+    document.querySelectorAll('[name="wiz_text"]').forEach(r => r.checked = false);
+    const radio = document.querySelector(`[name="wiz_text"][value="${p}"]`);
+    if (radio) radio.checked = true;
+
+    const getStyle = (isActive) => isActive
+        ? 'p-1 rounded-2xl border transition-all duration-300 bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 border-violet-500/30 shadow-[0_0_20px_rgba(139,92,246,0.15)]'
+        : 'p-1 rounded-2xl border transition-all duration-300 bg-white/5 border-white/10 opacity-70 hover:opacity-100';
+
+    document.getElementById('box-text-gemini').className = getStyle(p === 'gemini');
+    document.getElementById('box-text-openai').className = getStyle(p === 'openai');
+
+    // Toggle opacity of keys based on selection so it's clearer
+    document.getElementById('openai-key-box').classList.toggle('opacity-50', p !== 'openai');
 }
 
 window.setTextProvider = (provider) => {
     state.textProvider = provider;
     updateTextProviderUI();
-};
-
-window.toggleGeminiHelp = () => {
-    const guide = document.getElementById('gemini-help-guide');
-    guide.classList.toggle('hidden');
 };
 
 window.setTTSProvider = (provider) => {

@@ -667,7 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showWizError('');
         }
 
-        // Validation Step 2
+        // Validation Step 2: En modo SaaS saltamos validación de llaves ya que usamos las maestras
         if (window.currentWizStep === 2) {
             if (!CONFIG.isSaaS) {
                 if (state.ttsProvider === 'openai' && !oKey) {
@@ -749,39 +749,32 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicializar Wizard
     updateWizUI();
 
-    document.getElementById('btn-start').onclick = () => {
-        const sanitizeKey = (k) => k.replace(/^(key|api\s*key|clave):\s*/i, '').trim();
+    document.getElementById('btn-start').onclick = async () => {
+        // Guardar preferencias finales
         const oKeyRaw1 = document.getElementById('input-openai-key').value;
         const oKeyRaw2 = document.getElementById('input-openai-key-audio')?.value || '';
-        const oKey = sanitizeKey(oKeyRaw1 || oKeyRaw2);
-        const gKey = sanitizeKey(document.getElementById('input-gemini-key').value);
-        const eKey = sanitizeKey(document.getElementById('input-el-key').value);
+        const oKey = (oKeyRaw1 || oKeyRaw2).trim();
+        const gKey = document.getElementById('input-gemini-key').value.trim();
+        const eKey = document.getElementById('input-el-key').value.trim();
         const vId = document.getElementById('input-el-voice').value.trim();
         const remember = document.getElementById('check-remember').checked;
 
-        state.openaiVoice = document.getElementById('select-openai-voice').value;
-
         storage.set('REMEMBER_KEYS', remember);
-
         if (remember) {
-            storage.set('OPENAI_KEY', oKey);
-            storage.set('GEMINI_KEY', gKey);
-            storage.set('EL_KEY', eKey);
-            storage.set('EL_VOICE', vId);
-        } else {
-            storage.remove('OPENAI_KEY');
-            storage.remove('GEMINI_KEY');
-            storage.remove('EL_KEY');
-            storage.remove('EL_VOICE');
-            state.tempKeys = { oKey, gKey, eKey, vId };
+            if (oKey) storage.set('OPENAI_KEY', oKey);
+            if (gKey) storage.set('GEMINI_KEY', gKey);
+            if (eKey) storage.set('EL_KEY', eKey);
+            if (vId) storage.set('EL_VOICE', vId);
         }
 
         storage.set('TEXT_PROVIDER', state.textProvider);
         storage.set('TTS_PROVIDER', state.ttsProvider);
-        storage.set('OPENAI_VOICE', state.openaiVoice);
+        storage.set('OPENAI_VOICE', document.getElementById('select-openai-voice').value);
         storage.set('BROWSER_VOICE', document.getElementById('select-browser-voice').value);
-        storage.set('AUDIO_MODE', !!eKey || !!storage.get('BROWSER_VOICE') || true);
-        showView('onboarding_step3');
+        storage.set('AUDIO_MODE', true);
+
+        // Finalizar y guardar en Firebase
+        await window.finishOnboarding();
     };
 
     window.finishOnboarding = async () => {

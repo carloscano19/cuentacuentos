@@ -487,7 +487,7 @@ function handleError(error) {
         },
         'ERR_AUTH': {
             title: "Error de Sesión",
-            desc: "Hubo un problema al entrar con tu cuenta de Google.",
+            desc: error.message || "Hubo un problema al entrar con tu cuenta de Google.",
             cta: "Reintentar",
             action: () => showView('login')
         },

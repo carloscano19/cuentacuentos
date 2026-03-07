@@ -567,41 +567,50 @@ document.addEventListener('DOMContentLoaded', () => {
             state.user = user;
             console.log("Usuario detectado:", user.email);
 
-            // Ir directamente a la App (no esperamos a Firestore para no bloquear)
-            if (storage.get('ONBOARDING')) {
+            // Cargar datos del usuario (créditos + progreso)
+            const userData = await loadUserCredits(user.uid);
+            updateCreditsUI();
+
+            if (userData && userData.onboardingComplete) {
                 showView('workshop');
             } else {
                 showView('onboarding');
-            }
-
-            // Cargar créditos en segundo plano
-            try {
-                await loadUserCredits(user.uid);
-                updateCreditsUI();
-            } catch (err) {
-                console.error("Fallo al cargar créditos en segundo plano:", err);
             }
         } else {
             console.log("No hay usuario (Login)");
             state.user = null;
             showView('login');
+            updateCreditsUI();
         }
     });
+
+    window.handleLogout = async () => {
+        await auth.signOut();
+        location.reload(); // Recargamos para limpiar todo
+    };
 
     async function loadUserCredits(uid) {
         try {
             const userDoc = await getDoc(doc(db, "users", uid));
             if (userDoc.exists()) {
-                state.userCredits = userDoc.data().credits || 0;
+                const data = userDoc.data();
+                state.userCredits = data.credits || 0;
+                return data;
             } else {
                 // Nuevo usuario: 1 crédito de regalo
-                await setDoc(doc(db, "users", uid), { credits: 1, email: state.user.email });
+                const newData = {
+                    credits: 1,
+                    email: state.user.email,
+                    onboardingComplete: false
+                };
+                await setDoc(doc(db, "users", uid), newData);
                 state.userCredits = 1;
+                return newData;
             }
-            console.log("Créditos del usuario:", state.userCredits);
         } catch (e) {
-            console.error("Error cargando créditos:", e);
-            state.userCredits = 0; // Fallback
+            console.error("Error cargando usuario:", e);
+            state.userCredits = 0;
+            return null;
         }
     }
 
@@ -772,7 +781,22 @@ document.addEventListener('DOMContentLoaded', () => {
         storage.set('OPENAI_VOICE', state.openaiVoice);
         storage.set('BROWSER_VOICE', document.getElementById('select-browser-voice').value);
         storage.set('AUDIO_MODE', !!eKey || !!storage.get('BROWSER_VOICE') || true);
+        showView('onboarding_step3');
+    };
+
+    window.finishOnboarding = async () => {
         storage.set('ONBOARDING', true);
+
+        // También guardamos en Firebase para que el usuario no repita onboarding nunca
+        if (state.user) {
+            try {
+                await setDoc(doc(db, "users", state.user.uid), {
+                    onboardingComplete: true
+                }, { merge: true });
+            } catch (e) {
+                console.error("No se pudo guardar progreso en Firebase", e);
+            }
+        }
 
         showView('workshop');
     };

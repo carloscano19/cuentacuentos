@@ -565,19 +565,24 @@ document.addEventListener('DOMContentLoaded', () => {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
             state.user = user;
-            console.log("Usuario logueado:", user.email);
+            console.log("Usuario detectado:", user.email);
 
-            // Cargar créditos desde Firestore
-            await loadUserCredits(user.uid);
-            updateCreditsUI();
-
-            // Si el usuario está logueado, vamos al onboarding (o workshop si ya lo pasó)
+            // Ir directamente a la App (no esperamos a Firestore para no bloquear)
             if (storage.get('ONBOARDING')) {
                 showView('workshop');
             } else {
                 showView('onboarding');
             }
+
+            // Cargar créditos en segundo plano
+            try {
+                await loadUserCredits(user.uid);
+                updateCreditsUI();
+            } catch (err) {
+                console.error("Fallo al cargar créditos en segundo plano:", err);
+            }
         } else {
+            console.log("No hay usuario (Login)");
             state.user = null;
             showView('login');
         }

@@ -6,7 +6,7 @@ import { StoryPlayer } from './player.js';
 
 // --- Firebase & Auth ---
 import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithCredential, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 
 // CONFIGURACIÓN DE FIREBASE (El usuario debe rellenar esto)
@@ -612,12 +612,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 // Flujo Web (para pruebas)
                 const provider = new GoogleAuthProvider();
-                const { signInWithPopup } = await import('firebase/auth');
                 await signInWithPopup(auth, provider);
             }
         } catch (error) {
-            console.error("Login Error:", error);
-            handleError({ code: 'ERR_AUTH', message: 'No se pudo iniciar sesión con Google.' });
+            console.error("Login Error Details:", error);
+            handleError({
+                code: 'ERR_AUTH',
+                message: `Error al entrar: ${error.message || 'No se pudo iniciar sesión con Google.'}`
+            });
         }
     };
 

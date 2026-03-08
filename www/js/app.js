@@ -6,7 +6,7 @@ import { StoryPlayer } from './player.js';
 
 // --- Firebase & Auth ---
 import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithRedirect, getRedirectResult } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 
 // CONFIGURACIÓN DE FIREBASE
@@ -62,24 +62,7 @@ const state = {
 let views, btnSettings, inputChar, btnAddChar, charChipsContainer, charCount, btnCreate, inputValue, valueCount;
 
 // --- Inicialización Principal ---
-
-// Lanzar getRedirectResult INMEDIATAMENTE al cargar el módulo (antes del DOMContentLoaded)
-// para que el token del redirect esté procesado lo antes posible.
-// onAuthStateChanged dispara null primero —> espera esta promesa antes de mostrar login.
-const redirectResultPromise = getRedirectResult(auth)
-    .then(result => {
-        if (result) console.log("🔑 Redirect auth completado:", result.user.email);
-        return result;
-    })
-    .catch(err => {
-        if (err.code !== 'auth/popup-closed-by-user') {
-            console.warn("Auth redirect error:", err.code);
-        }
-        return null;
-    });
-
 document.addEventListener('DOMContentLoaded', () => {
-    // Referencias a elementos
     views = document.querySelectorAll('.view');
     btnSettings = document.getElementById('btn-settings');
     inputChar = document.getElementById('input-character');
@@ -101,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
 function initAuthObserver() {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
-            // Usuario autenticado: cargar datos y navegar
             state.user = user;
             console.log("🟢 Sesión activa:", user.email);
 
@@ -125,22 +107,11 @@ function initAuthObserver() {
             }
 
         } else {
-            // Sin usuario: esperar a que getRedirectResult resuelva por si hay un
-            // redirect pendiente. Si no hay redirect, mostrar login normalmente.
-            // Esto evita el parpadeo de login cuando la página carga tras un redirect de Google.
-            console.log("⏳ Auth: sin sesión, esperando redirect result...");
-            await redirectResultPromise;
-
-            // Tras esperar: si el redirect trajo un usuario, onAuthStateChanged
-            // ya volverá a dispararse con el usuario — no mostramos login.
-            // Si no hay usuario después del redirect, es una sesión limpia.
-            if (!auth.currentUser) {
-                state.user = null;
-                state.userCredits = 0;
-                updateCreditsUI();
-                showView('login');
-                console.log("⚪ Sin sesión activa. Vista: login");
-            }
+            state.user = null;
+            state.userCredits = 0;
+            updateCreditsUI();
+            showView('login');
+            console.log("⚪ Sin sesión. Mostrando login.");
         }
     });
 }
@@ -170,13 +141,12 @@ async function loadUserCredits(uid, email) {
 window.handleLogin = async () => {
     try {
         const provider = new GoogleAuthProvider();
-        // Usar redirect en lugar de popup — más robusto en todos los entornos
-        // (Safari, iOS, Capacitor, popups bloqueados, etc.)
-        await signInWithRedirect(auth, provider);
-        // La página se recargará. El resultado se captura en getRedirectResult
-        // dentro del DOMContentLoaded al volver.
+        await signInWithPopup(auth, provider);
+        // onAuthStateChanged se dispara automáticamente tras el popup
     } catch (error) {
-        console.error("Login Error:", error.code, error.message);
+        if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+            console.error("Login Error:", error.code, error.message);
+        }
     }
 };
 

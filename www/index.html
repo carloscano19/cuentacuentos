@@ -54,7 +54,7 @@
                     <circle cx="12" cy="12" r="3" />
                 </svg>
             </button>
-            <button onclick="handleLogout()"
+            <button id="btn-logout-header" onclick="handleLogout()"
                 class="p-2 rounded-full hover:bg-red-500/20 transition-colors text-white/50 hover:text-red-400"
                 title="Cerrar Sesión">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
@@ -80,7 +80,7 @@
             <p class="text-secondary opacity-80 text-center mb-10 max-w-[280px]">Entra para guardar tus cuentos y
                 acceder a narradores mágicos.</p>
 
-            <button id="btn-google-login"
+            <button id="btn-google-login" onclick="handleLogin()"
                 class="w-full bg-white text-black py-4 px-6 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-white/90 transition-all shadow-xl active:scale-95">
                 <svg viewBox="0 0 24 24" width="24" height="24" xmlns="http://www.w3.org/2000/svg">
                     <path
@@ -697,7 +697,7 @@
 
     <!-- Scripts -->
     <script src="js/api.js?v=15"></script>
-    <script type="module" src="js/app.js?v=15"></script>
+    <script type="module" src="js/app.js?v=16"></script>
 </body>
 
 </html>

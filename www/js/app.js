@@ -138,15 +138,34 @@ async function loadUserCredits(uid, email) {
     }
 }
 
+// Guard para evitar doble llamada a signInWithPopup (causa auth/cancelled-popup-request)
+let loginInProgress = false;
+
 window.handleLogin = async () => {
+    if (loginInProgress) return; // Si ya hay un popup abierto, ignorar el clic
+    loginInProgress = true;
+
+    const btnLogin = document.getElementById('btn-google-login');
+    if (btnLogin) {
+        btnLogin.disabled = true;
+        btnLogin.querySelector('span')?.lastElementChild?.insertAdjacentText?.('beforebegin', ' ');
+    }
+
     try {
         const provider = new GoogleAuthProvider();
         await signInWithPopup(auth, provider);
-        // onAuthStateChanged se dispara automáticamente tras el popup
+        // onAuthStateChanged se dispara automáticamente — no hacemos nada más aquí
     } catch (error) {
-        if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
+        // Ignorar errores esperados (usuario cerró el popup)
+        if (error.code !== 'auth/popup-closed-by-user' &&
+            error.code !== 'auth/cancelled-popup-request') {
             console.error("Login Error:", error.code, error.message);
+        } else {
+            console.log("Popup cerrado por el usuario o cancelado.");
         }
+    } finally {
+        loginInProgress = false;
+        if (btnLogin) btnLogin.disabled = false;
     }
 };
 

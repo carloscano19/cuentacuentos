@@ -62,6 +62,22 @@ const state = {
 let views, btnSettings, inputChar, btnAddChar, charChipsContainer, charCount, btnCreate, inputValue, valueCount;
 
 // --- Inicialización Principal ---
+
+// Lanzar getRedirectResult INMEDIATAMENTE al cargar el módulo (antes del DOMContentLoaded)
+// para que el token del redirect esté procesado lo antes posible.
+// onAuthStateChanged dispara null primero —> espera esta promesa antes de mostrar login.
+const redirectResultPromise = getRedirectResult(auth)
+    .then(result => {
+        if (result) console.log("🔑 Redirect auth completado:", result.user.email);
+        return result;
+    })
+    .catch(err => {
+        if (err.code !== 'auth/popup-closed-by-user') {
+            console.warn("Auth redirect error:", err.code);
+        }
+        return null;
+    });
+
 document.addEventListener('DOMContentLoaded', () => {
     // Referencias a elementos
     views = document.querySelectorAll('.view');
@@ -76,38 +92,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     initStarfield();
     loadSavedPreferences();
-
-    // El observer muestra la vista correcta inmediatamente (login, onboarding o workshop)
     initAuthObserver();
     attachEventListeners();
-
-    // getRedirectResult en background — NO bloqueante.
-    // onAuthStateChanged detectará al usuario cuando el redirect complete.
-    getRedirectResult(auth).catch(err => {
-        if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
-            console.warn("Auth redirect error:", err.code, err.message);
-        }
-    });
 });
 
 // --- Lógica de Autenticación & Créditos ---
-// Flag para evitar que el observer navegue dos veces si Firebase dispara múltiples eventos
-let isNavigating = false;
 
 function initAuthObserver() {
     onAuthStateChanged(auth, async (user) => {
-        // Si ya estamos navegando, ignorar disparos duplicados
-        if (isNavigating) return;
-        isNavigating = true;
-
         if (user) {
+            // Usuario autenticado: cargar datos y navegar
             state.user = user;
             console.log("🟢 Sesión activa:", user.email);
 
             try {
                 const userData = await loadUserCredits(user.uid, user.email);
                 console.log("📊 Datos cargados de Firestore:", userData);
-                // Pintamos los créditos UNA sola vez, con el dato real ya disponible
                 updateCreditsUI();
 
                 if (userData && userData.onboardingComplete) {
@@ -116,7 +116,6 @@ function initAuthObserver() {
                     console.log("👋 Usuario nuevo o onboarding pendiente");
                     window.currentWizStep = 1;
                     showView('onboarding');
-                    // updateWizUI DESPUÉS de mostrar la vista para garantizar que el DOM esté visible
                     updateWizUI();
                 }
             } catch (err) {
@@ -124,17 +123,25 @@ function initAuthObserver() {
                 updateCreditsUI();
                 showView('onboarding');
             }
-        } else {
-            console.log("⚪ Sin sesión activa");
-            state.user = null;
-            state.userCredits = 0;
-            updateCreditsUI();
-            showView('login');
-        }
 
-        // Liberar el flag después de un pequeño delay para absorber cualquier
-        // segundo disparo inmediato de Firebase (ej. token refresh)
-        setTimeout(() => { isNavigating = false; }, 2000);
+        } else {
+            // Sin usuario: esperar a que getRedirectResult resuelva por si hay un
+            // redirect pendiente. Si no hay redirect, mostrar login normalmente.
+            // Esto evita el parpadeo de login cuando la página carga tras un redirect de Google.
+            console.log("⏳ Auth: sin sesión, esperando redirect result...");
+            await redirectResultPromise;
+
+            // Tras esperar: si el redirect trajo un usuario, onAuthStateChanged
+            // ya volverá a dispararse con el usuario — no mostramos login.
+            // Si no hay usuario después del redirect, es una sesión limpia.
+            if (!auth.currentUser) {
+                state.user = null;
+                state.userCredits = 0;
+                updateCreditsUI();
+                showView('login');
+                console.log("⚪ Sin sesión activa. Vista: login");
+            }
+        }
     });
 }
 

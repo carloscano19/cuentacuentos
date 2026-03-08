@@ -87,8 +87,21 @@ function initAuthObserver() {
             state.user = user;
             console.log("🟢 Sesión activa:", user.email);
 
+            // Reflejar en la UI que estamos cargando la base de datos
+            const btnLogin = document.getElementById('btn-google-login');
+            if (btnLogin) {
+                btnLogin.disabled = true;
+                btnLogin.innerHTML = '<span>⏳ Conectando con la base de datos...</span>';
+            }
+
             try {
-                const userData = await loadUserCredits(user.uid, user.email);
+                // Timeout de 8 segundos: Firestore se queda colgado infinitamente si 
+                // la API Key en Google Cloud restringe el dominio.
+                const userData = await Promise.race([
+                    loadUserCredits(user.uid, user.email),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_FIRESTORE')), 8000))
+                ]);
+
                 console.log("📊 Datos cargados de Firestore:", userData);
                 updateCreditsUI();
 
@@ -102,8 +115,11 @@ function initAuthObserver() {
                 }
             } catch (err) {
                 console.error("❌ Fallo cargando datos de usuario:", err);
+                if (err.message === 'TIMEOUT_FIRESTORE') {
+                    alert("⚠️ Error crítico: La base de datos (Firestore) no responde.\n\nESTO SUCEDE PORQUE EL DOMINIO carloscanofernandez.com NO ESTÁ AUTORIZADO EN LAS RESTRICCIONES DE LA API KEY EN GOOGLE CLOUD CONSOLE.\n\nPor favor, ve a Google Cloud Console > APIs y Servicios > Credenciales > tu API Key, y añade 'carloscanofernandez.com' a los dominios permitidos HTTP.");
+                }
                 updateCreditsUI();
-                showView('onboarding');
+                showView('onboarding'); // Fallback para que al menos pueda usar la app
             }
 
         } else {

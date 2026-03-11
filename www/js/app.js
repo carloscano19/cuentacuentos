@@ -11,7 +11,7 @@ import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 
 // CONFIGURACIÓN DE FIREBASE
 const firebaseConfig = {
-    apiKey: "AIzaSyCLsG5uS1x0ZTC9FFnqfYb5BPfaUL1-_EA",
+    apiKey: "AIzaSyBVDD3COAaBdQnIUW6wuiM9swKCyIFDgUw",
     authDomain: "cuentacuentos-299da.firebaseapp.com",
     projectId: "cuentacuentos-299da",
     storageBucket: "cuentacuentos-299da.firebasestorage.app",

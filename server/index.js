@@ -19,49 +19,57 @@ const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 app.post('/generate-story', async (req, res) => {
     const { prompt, provider, model } = req.body;
 
+    async function callGemini(p, m) {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m || 'gemini-1.5-flash'}:generateContent?key=${GEMINI_API_KEY}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: p }] }]
+            })
+        });
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message);
+        return data.candidates[0].content.parts[0].text;
+    }
+
+    async function callOpenAI(p, m) {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${OPENAI_API_KEY}`
+            },
+            body: JSON.stringify({
+                model: m || 'gpt-4o-mini',
+                messages: [
+                    { role: 'system', content: 'Eres un cuentacuentos mágico experto en crear historias infantiles cautivadoras.' },
+                    { role: 'user', content: p }
+                ]
+            })
+        });
+        const data = await response.json();
+        if (data.error) throw new Error(data.error.message);
+        return data.choices[0].message.content;
+    }
+
     try {
+        let text = '';
         if (provider === 'gemini') {
-            // Proxy para Google Gemini
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-flash'}:generateContent?key=${GEMINI_API_KEY}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
-                })
-            });
-
-            const data = await response.json();
-            if (data.error) throw new Error(data.error.message);
-
-            const text = data.candidates[0].content.parts[0].text;
-            res.json({ text });
-
+            text = await callGemini(prompt, model);
         } else {
-            // Proxy para OpenAI
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${OPENAI_API_KEY}`
-                },
-                body: JSON.stringify({
-                    model: model || 'gpt-4o-mini',
-                    messages: [
-                        { role: 'system', content: 'Eres un cuentacuentos mágico experto en crear historias infantiles cautivadoras.' },
-                        { role: 'user', content: prompt }
-                    ]
-                })
-            });
-
-            const data = await response.json();
-            if (data.error) throw new Error(data.error.message);
-
-            const text = data.choices[0].message.content;
-            res.json({ text });
+            try {
+                // Modo SaaS: Intentamos primero con tu clave de OpenAI (Calidad Premium)
+                text = await callOpenAI(prompt, model);
+            } catch (error) {
+                console.warn("⚠️ OpenAI falló (posiblemente fondos agotados). Cambiando a Gemini (Gratis) como respaldo...");
+                // FALLBACK AUTOMÁTICO: Si OpenAI falla, le damos el servicio con Gemini para no perder al cliente
+                text = await callGemini(prompt, 'gemini-1.5-flash');
+            }
         }
+        res.json({ text });
     } catch (error) {
-        console.error("Error en Proxy:", error.message);
-        res.status(500).json({ error: error.message || 'Error generando el cuento' });
+        console.error("❌ Error crítico en Proxy:", error.message);
+        res.status(500).json({ error: 'El narrador mágico está descansando un momento. Vuelve a intentarlo pronto.' });
     }
 });
 

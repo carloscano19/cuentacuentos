@@ -34,6 +34,6 @@ jobs:
           username: ${{ secrets.HOSTINGER_SSH_USER }}
           password: ${{ secrets.HOSTINGER_SSH_PASSWORD }}
           port: ${{ secrets.HOSTINGER_SSH_PORT }}
-          source: "www/*"
+          source: "www/*,server/*"
           target: "domains/carloscanofernandez.com/public_html/cuentacuentos"
-          strip_components: 1
+          strip_components: 0

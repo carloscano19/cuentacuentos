@@ -1,7 +1,5 @@
 // server/index.js
-// Ejemplo de Backend Proxy para Cuentacuentos
-// Protege tus claves y permite monetizar el servicio
-
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
@@ -11,25 +9,35 @@ app.use(cors());
 app.use(express.json());
 
 // --- CONFIGURACIÓN SEGURA ---
-// En producción, estas claves irían en variables de entorno (Environment Variables)
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || 'TU_CLAVE_MAESTRA_AQUÍ';
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'TU_CLAVE_GEMINI_AQUÍ';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 
 /**
- * Endpoints de Generación de Cuentos
+ * Endpoint de Generación de Cuentos (Proxy para Gemini y OpenAI)
  */
 app.post('/generate-story', async (req, res) => {
     const { prompt, provider, model } = req.body;
 
-    // TODO: Aquí validarías si el usuario tiene "Créditos" o ha Pagado
-
     try {
-        let text = '';
         if (provider === 'gemini') {
-            // Lógica para llamar a Google Gemini desde el servidor
-            // ...
+            // Proxy para Google Gemini
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-1.5-flash'}:generateContent?key=${GEMINI_API_KEY}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+
+            const text = data.candidates[0].content.parts[0].text;
+            res.json({ text });
+
         } else {
-            // Lógica para OpenAI
+            // Proxy para OpenAI
             const response = await fetch('https://api.openai.com/v1/chat/completions', {
                 method: 'POST',
                 headers: {
@@ -39,23 +47,26 @@ app.post('/generate-story', async (req, res) => {
                 body: JSON.stringify({
                     model: model || 'gpt-4o-mini',
                     messages: [
-                        { role: 'system', content: 'Eres un cuentacuentos mágico...' },
+                        { role: 'system', content: 'Eres un cuentacuentos mágico experto en crear historias infantiles cautivadoras.' },
                         { role: 'user', content: prompt }
                     ]
                 })
             });
-            const data = await response.json();
-            text = data.choices[0].message.content;
-        }
 
-        res.json({ text });
+            const data = await response.json();
+            if (data.error) throw new Error(data.error.message);
+
+            const text = data.choices[0].message.content;
+            res.json({ text });
+        }
     } catch (error) {
-        res.status(500).json({ error: 'Error generando el cuento' });
+        console.error("Error en Proxy:", error.message);
+        res.status(500).json({ error: error.message || 'Error generando el cuento' });
     }
 });
 
 /**
- * Endpoint de Voz (OpenAI)
+ * Endpoint de Voz (OpenAI TTS)
  */
 app.post('/generate-audio-oa', async (req, res) => {
     const { text, voice } = req.body;
@@ -74,14 +85,64 @@ app.post('/generate-audio-oa', async (req, res) => {
             })
         });
 
-        // Hacemos un "pipe" del stream de audio directamente al cliente
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error?.message || 'Error en OpenAI TTS');
+        }
+
+        // Enviamos el audio directamente como stream
+        res.setHeader('Content-Type', 'audio/mpeg');
         response.body.pipe(res);
+
     } catch (error) {
-        res.status(500).json({ error: 'Error generando audio' });
+        console.error("Error en Audio Proxy:", error.message);
+        res.status(500).json({ error: error.message });
     }
+});
+
+/**
+ * Endpoint de Voz (ElevenLabs TTS)
+ */
+app.post('/generate-audio-el', async (req, res) => {
+    const { text, voiceId } = req.body;
+    const DEFAULT_VOICE_ID = '21m00Tcm4TlvDq8ikWAM';
+
+    try {
+        const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId || DEFAULT_VOICE_ID}`, {
+            method: 'POST',
+            headers: {
+                'xi-api-key': ELEVENLABS_API_KEY,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                text: text,
+                model_id: 'eleven_multilingual_v2',
+                voice_settings: { stability: 0.75, similarity_boost: 0.85 }
+            })
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.detail?.status === 'quota_exceeded' ? 'Cuota de ElevenLabs agotada' : 'Error en ElevenLabs');
+        }
+
+        res.setHeader('Content-Type', 'audio/mpeg');
+        response.body.pipe(res);
+
+    } catch (error) {
+        console.error("Error en ElevenLabs Proxy:", error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+/**
+ * Health Check
+ */
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', message: 'Servidor de Cuentacuentos activo' });
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor seguro de Cuentacuentos corriendo en puerto ${PORT}`);
+    console.log(`🚀 Servidor seguro de Cuentacuentos en puerto ${PORT}`);
 });

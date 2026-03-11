@@ -27,7 +27,7 @@ const db = getFirestore(app);
 // isSaaS: true oculta los campos de API Keys para el usuario final.
 const CONFIG = {
     isSaaS: !!window.Capacitor || window.location.hostname === 'carloscanofernandez.com',
-    proxyUrl: 'https://tu-backend-api.com', // Futuro endpoint para Cloud Functions
+    proxyUrl: window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://carloscanofernandez.com/api',
     plans: {
         free: { name: 'El Aprendiz', desc: 'Narrativa estándar (Gratis)' },
         premium: { name: 'Mago Maestro', desc: 'Narrativa Avanzada (Premium)' }

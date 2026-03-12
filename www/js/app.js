@@ -27,7 +27,7 @@ const db = getFirestore(app);
 // isSaaS: true oculta los campos de API Keys para el usuario final.
 const CONFIG = {
     isSaaS: !!window.Capacitor || window.location.hostname === 'carloscanofernandez.com',
-    proxyUrl: window.location.hostname === 'localhost' ? 'http://localhost:3000' : 'https://carloscanofernandez.com/api',
+    proxyUrl: 'https://us-central1-cuentacuentos-299da.cloudfunctions.net', // Nueva URL de Firebase Functions
     plans: {
         free: { name: 'El Aprendiz', desc: 'Narrativa estándar (Gratis)' },
         premium: { name: 'Mago Maestro', desc: 'Narrativa Avanzada (Premium)' }
@@ -109,17 +109,25 @@ function initAuthObserver() {
                     showView('workshop');
                 } else {
                     console.log("👋 Usuario nuevo o onboarding pendiente");
-                    window.currentWizStep = 1;
-                    showView('onboarding');
-                    updateWizUI();
+                    // Asegurarnos de que el wizard está listo antes de mostrarlo
+                    setTimeout(() => {
+                        window.currentWizStep = 1;
+                        showView('onboarding');
+                        updateWizUI();
+                    }, 500);
                 }
             } catch (err) {
                 console.error("❌ Fallo cargando datos de usuario:", err);
-                if (err.message === 'TIMEOUT_FIRESTORE') {
-                    alert("⚠️ Error crítico: La base de datos (Firestore) no responde.\n\nESTO SUCEDE PORQUE EL DOMINIO carloscanofernandez.com NO ESTÁ AUTORIZADO EN LAS RESTRICCIONES DE LA API KEY EN GOOGLE CLOUD CONSOLE.\n\nPor favor, ve a Google Cloud Console > APIs y Servicios > Credenciales > tu API Key, y añade 'carloscanofernandez.com' a los dominios permitidos HTTP.");
+
+                // Si falla la base de datos, mostramos un aviso pero dejamos entrar 
+                // para que la app no parezca "muerta".
+                if (err.message === 'TIMEOUT_FIRESTORE' || err.code === 'permission-denied') {
+                    console.warn("⚠️ Firestore bloqueado por reglas de seguridad o dominio.");
                 }
+
+                state.userCredits = state.userCredits || 0;
                 updateCreditsUI();
-                showView('onboarding'); // Fallback para que al menos pueda usar la app
+                showView('workshop'); // Entramos al taller aunque no carguen los créditos
             }
 
         } else {
